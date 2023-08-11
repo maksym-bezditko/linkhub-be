@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id             String    @id @default(uuid())
+
+  email          String    @unique
+  userName       String    @unique @map("user_name")
+  passwordHash   String    @map("password_hash")
+
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  userInfo       UserInfo?
+  authInfo       AuthInfo?
+  posts          Post[]
+  likes          Like[]
+  followedBy     Follow[]  @relation("FollowingUserRelation")
+  followingUsers Follow[]  @relation("FollowedUserRelation")
+}
+
+model AuthInfo {
+  id             String   @id @default(uuid())
+
+  user User @relation(fields: [userId], references: [id])
+  userId         String   @unique @map("user_id")
+
+  accessToken    String   @map("access_token")
+  refreshToken   String   @map("refresh_token")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}
+
+model UserInfo {
+  id          String   @id @default(uuid())
+
+  user User @relation(fields: [userId], references: [id])
+  userId      String   @unique @map("user_id")
+
+  fullName    String   @map("full_name")
+  bio         String?
+  profileLink String?  @map("profile_link")
+
+  updatedAt   DateTime @updatedAt @map("updated_at")
+}
+
+model Post {
+  id        String   @id @default(uuid())
+
+  photoLink String   @map("photo_link")
+  caption   String?
+  location  String?
+
+  user  User   @relation(fields: [userId], references: [id])
+  userId    String   @map("user_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  likes Like[]
+}
+
+model Like {
+  id     String @id @default(uuid())
+
+  post Post @relation(fields: [postId], references: [id])
+  postId String @map("post_id")
+
+  user User @relation(fields: [userId], references: [id])
+  userId String @map("user_id")
+}
+
+model Follow {
+  id             String @id @default(uuid())
+
+  follower       User   @relation("FollowingUserRelation", fields: [followerId], references: [id])
+  followerId     String
+
+  followedUser   User   @relation("FollowedUserRelation", fields: [followedUserId], references: [id])
+  followedUserId String
+}
