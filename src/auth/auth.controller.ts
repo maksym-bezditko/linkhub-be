@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  HttpCode,
   Post,
   UsePipes,
   ValidationPipe,
@@ -20,6 +21,7 @@ export class AuthController {
   }
 
   @UsePipes(new ValidationPipe())
+  @HttpCode(200)
   @Post('/login')
   async loginWithEmail(@Body() dto: LoginWithEmailDto) {
     return this.authService.loginWithEmail(dto);
