@@ -11,14 +11,14 @@ generator client {
 }
 
 model User {
-  id             String    @id @default(uuid())
+  id String @id @default(uuid())
 
-  email          String    @unique
-  userName       String    @unique @map("user_name")
-  passwordHash   String    @map("password_hash")
+  email        String @unique
+  userName     String @unique @map("user_name")
+  passwordHash String @map("password_hash")
 
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   userInfo       UserInfo?
   authInfo       AuthInfo?
@@ -29,40 +29,39 @@ model User {
 }
 
 model AuthInfo {
-  id             String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  user User @relation(fields: [userId], references: [id])
-  userId         String   @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique @map("user_id")
 
-  accessToken    String   @map("access_token")
-  refreshToken   String   @map("refresh_token")
+  refreshTokenHash String? @map("refresh_token_hash")
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 }
 
 model UserInfo {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  user User @relation(fields: [userId], references: [id])
-  userId      String   @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique @map("user_id")
 
-  fullName    String   @map("full_name")
+  fullName    String  @map("full_name")
   bio         String?
-  profileLink String?  @map("profile_link")
+  profileLink String? @map("profile_link")
 
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 }
 
 model Post {
-  id        String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  photoLink String   @map("photo_link")
+  photoLink String  @map("photo_link")
   caption   String?
   location  String?
 
-  user  User   @relation(fields: [userId], references: [id])
-  userId    String   @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @map("user_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -71,20 +70,20 @@ model Post {
 }
 
 model Like {
-  id     String @id @default(uuid())
+  id String @id @default(uuid())
 
-  post Post @relation(fields: [postId], references: [id])
+  post   Post   @relation(fields: [postId], references: [id])
   postId String @map("post_id")
 
-  user User @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
   userId String @map("user_id")
 }
 
 model Follow {
-  id             String @id @default(uuid())
+  id String @id @default(uuid())
 
-  follower       User   @relation("FollowingUserRelation", fields: [followerId], references: [id])
-  followerId     String
+  follower   User   @relation("FollowingUserRelation", fields: [followerId], references: [id])
+  followerId String
 
   followedUser   User   @relation("FollowedUserRelation", fields: [followedUserId], references: [id])
   followedUserId String
