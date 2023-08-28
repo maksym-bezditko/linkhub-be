@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
+import { AuthResolver } from './graphql/auth.resolver';
 import { DatabaseModule } from 'src/database/database.module';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 import { PrismaService } from 'src/database/prisma.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 import { getJwtConfig } from 'src/config/getJwtConfig';
 import { AtStrategy } from './strategies/at.strategy';
 import { RtStrategy } from './strategies/rt.strategy';
@@ -21,10 +20,14 @@ import { RtStrategy } from './strategies/rt.strategy';
       useFactory: getJwtConfig,
       inject: [ConfigService],
     }),
-
-    PassportModule,
   ],
-  controllers: [AuthController],
-  providers: [AuthService, PrismaService, AtStrategy, RtStrategy],
+  providers: [
+    AuthResolver,
+    AuthService,
+    PrismaService,
+    JwtService,
+    AtStrategy,
+    RtStrategy,
+  ],
 })
 export class AuthModule {}

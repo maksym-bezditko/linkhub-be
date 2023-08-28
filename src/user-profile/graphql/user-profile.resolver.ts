@@ -1,6 +1,6 @@
 import { Resolver, Query, Args } from '@nestjs/graphql';
 import { UserProfileService } from '../user-profile.service';
-import { UserProfile } from './definitions/queries/user-profile.definition';
+import { UserProfile } from './definitions/response/user-profile.definition';
 
 @Resolver()
 export class UserProfileResolver {
