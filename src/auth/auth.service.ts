@@ -1,12 +1,15 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { AuthInfo } from '@prisma/client';
-import { PrismaService } from 'src/database/prisma.service';
-import { RegisterDto } from './dto/register.dto';
-import { hash, verify } from 'argon2';
-import { LoginWithEmailDto } from './dto/login-with-email.dto';
-import { JwtService } from '@nestjs/jwt';
-import { v4 as uuidv4 } from 'uuid';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { AuthInfo, User } from '@prisma/client';
+import { hash, verify } from 'argon2';
+import { PrismaService } from 'src/database/prisma.service';
+import { UserIdResponse } from './graphql/definitions/response/user-id.response';
+import { Tokens } from './graphql/definitions/response/tokens.response';
+import { GraphQLError } from 'graphql';
+import { LoginWithEmailInput } from './graphql/definitions/inputs/login-with-email.input';
+import { v4 as uuidv4 } from 'uuid';
+import { CreateUserInput } from './graphql/definitions/inputs/create-user.input';
 
 @Injectable()
 export class AuthService {
@@ -20,157 +23,188 @@ export class AuthService {
     return await hash(data);
   }
 
-  async getTokens(email: string, userId: string) {
-    const [at, rt] = await Promise.all([
-      this.jwtService.signAsync(
-        {
-          email,
-          userId,
+  async updateAuthInfo(
+    userId: string,
+    authInfo: Partial<AuthInfo>,
+  ): Promise<Omit<User, 'passwordHash'>> {
+    try {
+      const user = await this.prismaService.user.update({
+        where: {
+          id: userId,
         },
-        {
-          secret: this.configService.get('AT_SECRET'),
-          expiresIn: 15 * 60,
-        },
-      ),
-      this.jwtService.signAsync(
-        {
-          email,
-          userId,
-        },
-        {
-          secret: this.configService.get('RT_SECRET'),
-          expiresIn: 60 * 60 * 24 * 7,
-        },
-      ),
-    ]);
-
-    return {
-      accessToken: at,
-      refreshToken: rt,
-    };
-  }
-
-  async updateAuthInfo(userId: string, authInfo: Partial<AuthInfo>) {
-    await this.prismaService.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        authInfo: {
-          update: {
-            ...authInfo,
-          },
-        },
-      },
-    });
-  }
-
-  async createUser(registerDto: RegisterDto) {
-    const userId = uuidv4();
-
-    const { accessToken, refreshToken } = await this.getTokens(
-      registerDto.email,
-      userId,
-    );
-
-    await this.prismaService.user.create({
-      data: {
-        id: userId,
-        email: registerDto.email,
-        passwordHash: await this.hashData(registerDto.password),
-        userName: registerDto.userName,
-        authInfo: {
-          create: {
-            refreshTokenHash: await this.hashData(refreshToken),
-          },
-        },
-        userInfo: {
-          create: {
-            bio: registerDto.bio,
-            fullName: registerDto.fullName,
-            profileLink: registerDto.profileLink,
-          },
-        },
-      },
-    });
-
-    return {
-      accessToken,
-      refreshToken,
-    };
-  }
-
-  async loginWithEmail(loginDto: LoginWithEmailDto) {
-    const user = await this.prismaService.user.findUnique({
-      where: {
-        email: loginDto.email,
-      },
-    });
-
-    if (!user || !(await verify(user.passwordHash, loginDto.password)))
-      throw new UnauthorizedException();
-
-    const { accessToken, refreshToken } = await this.getTokens(
-      user.email,
-      user.id,
-    );
-
-    await this.updateAuthInfo(user.id, {
-      refreshTokenHash: await this.hashData(refreshToken),
-    });
-
-    return {
-      accessToken,
-      refreshToken,
-    };
-  }
-
-  async logout(userId: string) {
-    await this.prismaService.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        authInfo: {
-          update: {
-            data: {
-              refreshTokenHash: null,
+        data: {
+          authInfo: {
+            update: {
+              ...authInfo,
             },
           },
         },
-      },
-    });
+      });
+
+      delete user['passwordHash'];
+
+      return user;
+    } catch (e: any) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async getTokens(email: string, userId: string) {
+    try {
+      const [at, rt] = await Promise.all([
+        this.jwtService.signAsync(
+          {
+            email,
+            userId,
+          },
+          {
+            secret: this.configService.get('AT_SECRET'),
+            expiresIn: '1h',
+          },
+        ),
+        this.jwtService.signAsync(
+          {
+            email,
+            userId,
+          },
+          {
+            secret: this.configService.get('RT_SECRET'),
+            expiresIn: '30d',
+          },
+        ),
+      ]);
+
+      return {
+        accessToken: at,
+        refreshToken: rt,
+      };
+    } catch (e: any) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async loginWithEmail(loginDto: LoginWithEmailInput): Promise<Tokens> {
+    try {
+      const user = await this.prismaService.user.findUnique({
+        where: {
+          email: loginDto.email,
+        },
+      });
+
+      if (!user || !(await verify(user.passwordHash, loginDto.password)))
+        throw new UnauthorizedException();
+
+      const { accessToken, refreshToken } = await this.getTokens(
+        user.email,
+        user.id,
+      );
+
+      await this.updateAuthInfo(user.id, {
+        refreshTokenHash: await this.hashData(refreshToken),
+      });
+
+      return {
+        accessToken,
+        refreshToken,
+      };
+    } catch (e: any) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async createUser(createUserInput: CreateUserInput) {
+    try {
+      const userId = uuidv4();
+
+      const { accessToken, refreshToken } = await this.getTokens(
+        createUserInput.email,
+        userId,
+      );
+
+      await this.prismaService.user.create({
+        data: {
+          id: userId,
+          email: createUserInput.email,
+          passwordHash: await this.hashData(createUserInput.password),
+          userName: createUserInput.userName,
+          authInfo: {
+            create: {
+              refreshTokenHash: await this.hashData(refreshToken),
+            },
+          },
+          userInfo: {
+            create: {
+              bio: createUserInput.bio,
+              fullName: createUserInput.fullName,
+              profileLink: createUserInput.profileLink,
+            },
+          },
+        },
+      });
+
+      return {
+        accessToken,
+        refreshToken,
+      };
+    } catch (e: any) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async logout(userId: string): Promise<UserIdResponse> {
+    try {
+      await this.prismaService.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          authInfo: {
+            update: {
+              data: {
+                refreshTokenHash: null,
+              },
+            },
+          },
+        },
+      });
+
+      return { userId };
+    } catch (e: any) {
+      throw new GraphQLError(e.message);
+    }
   }
 
   async refreshToken(userId: string, refreshToken: string) {
-    const user = await this.prismaService.user.findUnique({
-      where: {
-        id: userId,
-      },
-      include: {
-        authInfo: true,
-      },
-    });
+    try {
+      const user = await this.prismaService.user.findUnique({
+        where: {
+          id: userId,
+        },
+        include: {
+          authInfo: true,
+        },
+      });
 
-    if (
-      !user ||
-      !user.authInfo.refreshTokenHash ||
-      !(await verify(user.authInfo.refreshTokenHash, refreshToken))
-    )
-      throw new UnauthorizedException();
+      if (
+        !user ||
+        !user.authInfo.refreshTokenHash ||
+        !(await verify(user.authInfo.refreshTokenHash, refreshToken))
+      )
+        throw new UnauthorizedException();
 
-    const { accessToken, refreshToken: newRefreshToken } = await this.getTokens(
-      user.email,
-      user.id,
-    );
+      const { accessToken, refreshToken: newRefreshToken } =
+        await this.getTokens(user.email, user.id);
 
-    await this.updateAuthInfo(user.id, {
-      refreshTokenHash: await this.hashData(refreshToken),
-    });
+      await this.updateAuthInfo(user.id, {
+        refreshTokenHash: await this.hashData(refreshToken),
+      });
 
-    return {
-      accessToken,
-      newRefreshToken,
-    };
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+      };
+    } catch (e: any) {
+      throw new GraphQLError(e.message);
+    }
   }
 }

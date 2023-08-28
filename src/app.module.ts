@@ -5,6 +5,7 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
 import { PostsModule } from './posts/posts.module';
+import { GraphQLFormattedError } from 'graphql';
 
 @Module({
   imports: [
@@ -15,9 +16,19 @@ import { PostsModule } from './posts/posts.module';
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'src/graphql/schema.gql'),
+      sortSchema: true,
+      includeStacktraceInErrorResponses: false,
+      formatError(formattedError): GraphQLFormattedError {
+        return {
+          message: formattedError.message,
+          extensions: formattedError.extensions,
+        };
+      },
     }),
 
     PostsModule,
+
+    AuthModule,
   ],
 })
 export class AppModule {}
