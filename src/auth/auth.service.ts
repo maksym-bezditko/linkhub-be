@@ -4,12 +4,15 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthInfo, User } from '@prisma/client';
 import { hash, verify } from 'argon2';
 import { PrismaService } from 'src/database/prisma.service';
-import { UserIdResponse } from './graphql/definitions/response/user-id.response';
-import { Tokens } from './graphql/definitions/response/tokens.response';
+import { UserIdResponse } from '../models/responses/user-id.response';
+import { Tokens } from '../models/responses/tokens.response';
 import { GraphQLError } from 'graphql';
-import { LoginWithEmailInput } from './graphql/definitions/inputs/login-with-email.input';
+import { LoginWithEmailInput } from '../models/inputs/login-with-email.input';
 import { v4 as uuidv4 } from 'uuid';
-import { CreateUserInput } from './graphql/definitions/inputs/create-user.input';
+import { CreateUserInput } from '../models/inputs/create-user.input';
+import { CheckForEmailExistenceInput } from '../models/inputs/check-for-email-existence.input';
+import { CommonResponse } from 'src/models/responses/common.response';
+import { CheckForUsernameExistenceInput } from 'src/models/inputs/check-for-username-existence.input';
 
 @Injectable()
 export class AuthService {
@@ -147,6 +150,38 @@ export class AuthService {
         refreshToken,
       };
     } catch (e: any) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async checkForEmailExistence(
+    checkForEmailExistenceInput: CheckForEmailExistenceInput,
+  ): Promise<CommonResponse> {
+    try {
+      const user = await this.prismaService.user.findFirst({
+        where: { email: checkForEmailExistenceInput.email },
+      });
+
+      if (user) throw new Error('User already exists');
+
+      return { succeeded: true };
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async checkForUsernameExistence(
+    checkForUsernameExistenceInput: CheckForUsernameExistenceInput,
+  ): Promise<CommonResponse> {
+    try {
+      const user = await this.prismaService.user.findFirst({
+        where: { userName: checkForUsernameExistenceInput.userName },
+      });
+
+      if (user) throw new Error('User already exists');
+
+      return { succeeded: true };
+    } catch (e) {
       throw new GraphQLError(e.message);
     }
   }
