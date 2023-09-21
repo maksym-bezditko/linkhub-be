@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthResolver } from './graphql/auth.resolver';
+import { AuthResolver } from './auth.resolver';
 import { DatabaseModule } from 'src/database/database.module';
 import { PrismaService } from 'src/database/prisma.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';

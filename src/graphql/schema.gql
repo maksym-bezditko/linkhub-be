@@ -2,6 +2,18 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+input CheckForEmailExistenceInput {
+  email: String!
+}
+
+input CheckForUsernameExistenceInput {
+  userName: String!
+}
+
+type CommonResponse {
+  succeeded: Boolean!
+}
+
 input CreatePostInput {
   caption: String!
   location: String!
@@ -30,6 +42,7 @@ input LoginWithEmailInput {
 
 type Mutation {
   createPost(createPostInput: CreatePostInput!): Post!
+  createUser(createUserInput: CreateUserInput!): Tokens!
   deletePost(id: String!): Post!
   updatePost(updatePostInput: UpdatePostInput!): Post!
 }
@@ -45,11 +58,12 @@ type Post {
 }
 
 type Query {
+  checkForEmailExistence(checkForEmailExistenceInput: CheckForEmailExistenceInput!): CommonResponse!
+  checkForUsernameExistence(checkForUsernameExistenceInput: CheckForUsernameExistenceInput!): CommonResponse!
   loginWithEmail(loginWithEmailInput: LoginWithEmailInput!): Tokens!
   logout(userId: String!): UserIdResponse!
   posts: [Post!]!
   refreshTokens: Tokens!
-  register(createUserInput: CreateUserInput!): Tokens!
   user(id: String!): UserProfile!
 }
 
