@@ -16,8 +16,8 @@ type CommonResponse {
 
 input CreatePostInput {
   caption: String!
+  imageName: String!
   location: String!
-  photoLink: String!
   userId: String!
 }
 
@@ -64,7 +64,6 @@ type Query {
   logout(userId: String!): UserIdResponse!
   posts: [Post!]!
   refreshTokens: Tokens!
-  user(id: String!): UserProfile!
 }
 
 type Tokens {
@@ -81,22 +80,4 @@ input UpdatePostInput {
 
 type UserIdResponse {
   userId: String!
-}
-
-type UserInfo {
-  bio: String
-  createdAt: DateTime!
-  fullName: String!
-  id: String!
-  profileLink: String
-  updatedAt: DateTime!
-}
-
-type UserProfile {
-  createdAt: DateTime!
-  email: String!
-  id: ID!
-  updatedAt: DateTime!
-  userInfo: UserInfo!
-  userName: String!
 }

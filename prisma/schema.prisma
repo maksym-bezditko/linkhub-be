@@ -10,20 +10,26 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum Role {
+  PROFILE_IMAGE @map("profile_image")
+  POST_IMAGE    @map("post_image")
+}
+
 model User {
   id String @id @default(uuid())
 
   email        String @unique
-  userName     String @unique @map("user_name")
   passwordHash String @map("password_hash")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  userInfo       UserInfo?
+  profile        Profile?
   authInfo       AuthInfo?
+
   posts          Post[]
   likes          Like[]
+  images         Image[]
   followedBy     Follow[]  @relation("FollowingUserRelation")
   followingUsers Follow[]  @relation("FollowedUserRelation")
 }
@@ -40,25 +46,27 @@ model AuthInfo {
   updatedAt DateTime @updatedAt @map("updated_at")
 }
 
-model UserInfo {
+model Profile {
   id String @id @default(uuid())
 
   user   User   @relation(fields: [userId], references: [id])
   userId String @unique @map("user_id")
 
-  fullName    String  @map("full_name")
-  bio         String?
-  profileLink String? @map("profile_link")
+  fullName String  @map("full_name")
+  bio      String?
+  userName String  @unique @map("user_name")
 
+  createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  image Image?
 }
 
 model Post {
   id String @id @default(uuid())
 
-  photoLink String  @map("photo_link")
-  caption   String?
-  location  String?
+  caption  String?
+  location String?
 
   user   User   @relation(fields: [userId], references: [id])
   userId String @map("user_id")
@@ -66,7 +74,29 @@ model Post {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  image Image?
+
   likes Like[]
+}
+
+model Image {
+  id String @id @default(uuid())
+
+  name String @unique
+
+  role Role
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: SetNull, onUpdate: SetNull)
+  postId String? @unique @map("post_id")
+
+  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: SetNull, onUpdate: SetNull)
+  profileId String?  @unique @map("profile_id")
+
+  owner   User   @relation(fields: [ownerId], references: [id])
+  ownerId String
 }
 
 model Like {
@@ -77,6 +107,9 @@ model Like {
 
   user   User   @relation(fields: [userId], references: [id])
   userId String @map("user_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 }
 
 model Follow {
@@ -87,4 +120,7 @@ model Follow {
 
   followedUser   User   @relation("FollowedUserRelation", fields: [followedUserId], references: [id])
   followedUserId String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 }
