@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { FilesService } from './files.service';
+import { PostImagesService } from './services/post-images.service';
+import { ProfileImagesService } from './services/profile-images.service';
 import { FilesController } from './files.controller';
 import { CUSTOM_PROVIDERS_NAMES } from 'src/models';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -11,7 +12,8 @@ import { PrismaService } from '../database/prisma.service';
   imports: [ConfigModule, DatabaseModule],
   controllers: [FilesController],
   providers: [
-    FilesService,
+    PostImagesService,
+    ProfileImagesService,
     PrismaService,
     {
       provide: CUSTOM_PROVIDERS_NAMES.S3_CLIENT,

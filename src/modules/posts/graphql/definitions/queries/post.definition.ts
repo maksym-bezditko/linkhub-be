@@ -16,6 +16,9 @@ export class Post implements PostType {
   caption: string;
 
   @Field()
+  imageId: string;
+
+  @Field()
   location: string;
 
   @Field(() => GraphQLISODateTime)
