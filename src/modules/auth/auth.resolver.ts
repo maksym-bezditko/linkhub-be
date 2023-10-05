@@ -1,5 +1,5 @@
 import { Args, Resolver, Query, Context, Mutation } from '@nestjs/graphql';
-import { Tokens } from '../../graphql/responses/tokens.response';
+import { TokensResponse } from 'src/graphql/responses/tokens.response';
 import { LoginWithEmailInput } from '../../graphql/inputs/login-with-email.input';
 import { UserIdResponse } from '../../graphql/responses/user-id.response';
 import { UseGuards } from '@nestjs/common';
@@ -10,23 +10,30 @@ import { CreateUserInput } from '../../graphql/inputs/create-user.input';
 import { CheckForEmailExistenceInput } from '../../graphql/inputs/check-for-email-existence.input';
 import { CommonResponse } from 'src/graphql/responses/common.response';
 import { CheckForUsernameExistenceInput } from 'src/graphql/inputs/check-for-username-existence.input';
+import { UserIdFromJwt } from 'src/decorators/user-id-from-jwt.decorator';
+import { UserResponse } from 'src/graphql/responses/user.response';
 
 @Resolver()
 export class AuthResolver {
   constructor(private readonly authService: AuthService) {}
 
-  @Mutation(() => Tokens)
+  @Mutation(() => TokensResponse)
   createUser(
     @Args('createUserInput') createUserInput: CreateUserInput,
-  ): Promise<Tokens> {
+  ): Promise<TokensResponse> {
     return this.authService.createUser(createUserInput);
   }
 
-  @Query(() => Tokens)
+  @Query(() => TokensResponse)
   loginWithEmail(
     @Args('loginWithEmailInput') loginWithEmailInput: LoginWithEmailInput,
-  ): Promise<Tokens> {
+  ): Promise<TokensResponse> {
     return this.authService.loginWithEmail(loginWithEmailInput);
+  }
+
+  @Query(() => [UserResponse])
+  allUsers(): Promise<UserResponse[]> {
+    return this.authService.allUsers();
   }
 
   @Query(() => CommonResponse)
@@ -48,7 +55,7 @@ export class AuthResolver {
   }
 
   @UseGuards(RtJwtGuard)
-  @Query(() => Tokens)
+  @Query(() => TokensResponse)
   refreshTokens(@Context() context: any) {
     return this.authService.refreshToken(
       context.req.user.userId,
@@ -57,8 +64,8 @@ export class AuthResolver {
   }
 
   @UseGuards(AtJwtGuard)
-  @Query(() => UserIdResponse)
-  logout(@Args('userId') userId: string) {
+  @Mutation(() => UserIdResponse)
+  logout(@UserIdFromJwt() userId: string) {
     return this.authService.logout(userId);
   }
 }

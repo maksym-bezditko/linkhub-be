@@ -1,11 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { AuthInfo, User } from '@prisma/client';
+import { Auth, User } from '@prisma/client';
 import { hash, verify } from 'argon2';
 import { PrismaService } from 'src/modules/database/prisma.service';
 import { UserIdResponse } from '../../graphql/responses/user-id.response';
-import { Tokens } from '../../graphql/responses/tokens.response';
+import { TokensResponse } from 'src/graphql/responses/tokens.response';
 import { GraphQLError } from 'graphql';
 import { LoginWithEmailInput } from '../../graphql/inputs/login-with-email.input';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,9 +26,24 @@ export class AuthService {
     return await hash(data);
   }
 
+  async allUsers() {
+    return this.prismaService.user.findMany({
+      include: {
+        profile: true,
+        auth: true,
+        followedBy: true,
+        followingUsers: true,
+        likes: true,
+        postImages: true,
+        posts: true,
+        profileImage: true,
+      },
+    });
+  }
+
   async updateAuthInfo(
     userId: string,
-    authInfo: Partial<AuthInfo>,
+    authInfo: Partial<Auth>,
   ): Promise<Omit<User, 'passwordHash'>> {
     try {
       const user = await this.prismaService.user.update({
@@ -36,7 +51,7 @@ export class AuthService {
           id: userId,
         },
         data: {
-          authInfo: {
+          auth: {
             update: {
               ...authInfo,
             },
@@ -86,7 +101,7 @@ export class AuthService {
     }
   }
 
-  async loginWithEmail(loginDto: LoginWithEmailInput): Promise<Tokens> {
+  async loginWithEmail(loginDto: LoginWithEmailInput): Promise<TokensResponse> {
     try {
       const user = await this.prismaService.user.findUnique({
         where: {
@@ -129,7 +144,7 @@ export class AuthService {
           id: userId,
           email: createUserInput.email,
           passwordHash: await this.hashData(createUserInput.password),
-          authInfo: {
+          auth: {
             create: {
               refreshTokenHash: await this.hashData(refreshToken),
             },
@@ -137,8 +152,10 @@ export class AuthService {
           profile: {
             create: {
               bio: createUserInput.bio,
-              fullName: createUserInput.fullName,
+              firstName: createUserInput.firstName,
+              lastName: createUserInput.lastName,
               userName: createUserInput.userName,
+              gender: createUserInput.gender,
             },
           },
         },
@@ -194,7 +211,7 @@ export class AuthService {
           id: userId,
         },
         data: {
-          authInfo: {
+          auth: {
             update: {
               data: {
                 refreshTokenHash: null,
@@ -217,14 +234,14 @@ export class AuthService {
           id: userId,
         },
         include: {
-          authInfo: true,
+          auth: true,
         },
       });
 
       if (
         !user ||
-        !user.authInfo.refreshTokenHash ||
-        !(await verify(user.authInfo.refreshTokenHash, refreshToken))
+        !user.auth.refreshTokenHash ||
+        !(await verify(user.auth.refreshTokenHash, refreshToken))
       )
         throw new UnauthorizedException();
 

@@ -2,6 +2,14 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AuthResponse {
+  createdAt: DateTime!
+  id: String!
+  refreshTokenHash: String!
+  updatedAt: DateTime!
+  userId: String!
+}
+
 input CheckForEmailExistenceInput {
   email: String!
 }
@@ -24,9 +32,10 @@ input CreatePostInput {
 input CreateUserInput {
   bio: String
   email: String!
-  fullName: String!
+  firstName: String!
+  gender: String!
+  lastName: String!
   password: String!
-  profileLink: String
   userName: String!
 }
 
@@ -35,6 +44,22 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+type FollowResponse {
+  createdAt: DateTime!
+  followedUserId: String!
+  followerId: String!
+  id: String!
+  updatedAt: DateTime!
+}
+
+type LikeResponse {
+  createdAt: DateTime!
+  id: String!
+  postId: String!
+  updatedAt: DateTime!
+  userId: String!
+}
+
 input LoginWithEmailInput {
   email: String!
   password: String!
@@ -42,8 +67,9 @@ input LoginWithEmailInput {
 
 type Mutation {
   createPost(createPostInput: CreatePostInput!): Post!
-  createUser(createUserInput: CreateUserInput!): Tokens!
+  createUser(createUserInput: CreateUserInput!): TokensResponse!
   deletePost(id: String!): Post!
+  logout: UserIdResponse!
   updatePost(updatePostInput: UpdatePostInput!): Post!
 }
 
@@ -51,22 +77,63 @@ type Post {
   caption: String!
   createdAt: DateTime!
   id: ID!
+  imageId: String!
   location: String!
   photoLink: String!
   updatedAt: DateTime!
   userId: String!
 }
 
-type Query {
-  checkForEmailExistence(checkForEmailExistenceInput: CheckForEmailExistenceInput!): CommonResponse!
-  checkForUsernameExistence(checkForUsernameExistenceInput: CheckForUsernameExistenceInput!): CommonResponse!
-  loginWithEmail(loginWithEmailInput: LoginWithEmailInput!): Tokens!
-  logout(userId: String!): UserIdResponse!
-  posts: [Post!]!
-  refreshTokens: Tokens!
+type PostImageResponse {
+  createdAt: DateTime!
+  id: String!
+  name: String!
+  ownerId: String!
+  postId: String!
+  updatedAt: DateTime!
 }
 
-type Tokens {
+type PostResponse {
+  caption: String
+  createdAt: DateTime!
+  id: String!
+  location: String
+  updatedAt: DateTime!
+  userId: String!
+}
+
+type ProfileImageResponse {
+  createdAt: DateTime!
+  id: String!
+  name: String!
+  ownerId: String!
+  profileId: String!
+  updatedAt: DateTime!
+}
+
+type ProfileResponse {
+  bio: String
+  createdAt: DateTime!
+  firstName: String!
+  gender: String!
+  id: String!
+  lastName: String!
+  updatedAt: DateTime!
+  userId: String!
+  userName: String!
+}
+
+type Query {
+  allUsers: [UserResponse!]!
+  checkForEmailExistence(checkForEmailExistenceInput: CheckForEmailExistenceInput!): CommonResponse!
+  checkForUsernameExistence(checkForUsernameExistenceInput: CheckForUsernameExistenceInput!): CommonResponse!
+  getProfile: ProfileResponse!
+  loginWithEmail(loginWithEmailInput: LoginWithEmailInput!): TokensResponse!
+  posts: [Post!]!
+  refreshTokens: TokensResponse!
+}
+
+type TokensResponse {
   accessToken: String!
   refreshToken: String!
 }
@@ -80,4 +147,20 @@ input UpdatePostInput {
 
 type UserIdResponse {
   userId: String!
+}
+
+type UserResponse {
+  auth: AuthResponse!
+  createdAt: DateTime!
+  email: String!
+  followedBy: [FollowResponse!]!
+  followingUsers: [FollowResponse!]!
+  id: String!
+  likes: [LikeResponse!]!
+  passwordHash: String!
+  postImages: [PostImageResponse!]!
+  posts: [PostResponse!]!
+  profile: ProfileResponse!
+  profileImage: ProfileImageResponse
+  updatedAt: DateTime!
 }

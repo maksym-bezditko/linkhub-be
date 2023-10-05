@@ -1,9 +1,10 @@
 import { Field, InputType } from '@nestjs/graphql';
+import { Gender } from '@prisma/client';
 import {
   IsEmail,
+  IsEnum,
   IsNotEmpty,
   IsString,
-  IsUrl,
   MaxLength,
   MinLength,
   ValidateIf,
@@ -30,9 +31,19 @@ export class CreateUserInput {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(100)
+  @MaxLength(50)
   @Field()
-  fullName: string;
+  firstName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  @Field()
+  lastName: string;
+
+  @Field()
+  @IsEnum(Gender)
+  gender: Gender;
 
   @IsString()
   @IsNotEmpty()
@@ -40,11 +51,4 @@ export class CreateUserInput {
   @ValidateIf((_, value) => value !== null)
   @Field({ nullable: true })
   bio: string | null;
-
-  @ValidateIf((_, value) => value !== null)
-  @IsString()
-  @IsUrl()
-  @IsNotEmpty()
-  @Field({ nullable: true })
-  profileLink: string | null;
 }

@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/modules/database/prisma.service';
 import { CreatePostInput } from './graphql/definitions/mutations/create-post.definition';
 import { UpdatePostInput } from './graphql/definitions/mutations/update-post.definition';
-import { Role } from '@prisma/client';
 
 @Injectable()
 export class PostsService {
@@ -12,17 +11,10 @@ export class PostsService {
     return this.prismaService.post.findMany();
   }
 
-  async createPost({ imageName, ...rest }: CreatePostInput) {
+  async createPost(createPostInput: CreatePostInput) {
     return this.prismaService.post.create({
       data: {
-        ...rest,
-        image: {
-          create: {
-            name: imageName,
-            role: Role.POST_IMAGE,
-            ownerId: rest.userId,
-          },
-        },
+        ...createPostInput,
       },
     });
   }

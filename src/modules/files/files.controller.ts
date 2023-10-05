@@ -9,7 +9,8 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
-import { FilesService } from './files.service';
+import { PostImagesService } from './services/post-images.service';
+import { ProfileImagesService } from './services/profile-images.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AtJwtGuard } from 'src/modules/auth/guards/jwt-at.guard';
 import { UserIdFromJwt } from 'src/decorators/user-id-from-jwt.decorator';
@@ -17,7 +18,10 @@ import { Request } from 'express';
 
 @Controller('files')
 export class FilesController {
-  constructor(private readonly filesService: FilesService) {}
+  constructor(
+    private readonly postImagesService: PostImagesService,
+    private readonly profileImagesService: ProfileImagesService,
+  ) {}
 
   @Post('upload-profile-image')
   @UseGuards(AtJwtGuard)
@@ -26,7 +30,7 @@ export class FilesController {
     @UploadedFile() file: Express.Multer.File,
     @UserIdFromJwt() userId: string,
   ) {
-    return this.filesService.uploadProfileImage(file, userId);
+    return this.profileImagesService.uploadImage(file, userId);
   }
 
   @Post('upload-post-image')
@@ -37,18 +41,36 @@ export class FilesController {
     @Req() { body: { postId } }: Request,
     @UserIdFromJwt() userId: string,
   ) {
-    return this.filesService.uploadPostImage(file, userId, postId);
+    return this.postImagesService.uploadImage(file, userId, postId);
   }
 
   @UseGuards(AtJwtGuard)
-  @Get(':name')
+  @Get('retrieve-profile-image')
+  retrieveProfileImage(@UserIdFromJwt() userId: string) {
+    return this.profileImagesService.retrieveImage(userId);
+  }
+
+  @UseGuards(AtJwtGuard)
+  @Get('retrieve-post-image/:name')
   retrieve(@Param('name') name: string, @UserIdFromJwt() userId: string) {
-    return this.filesService.retrieveFile(name, userId);
+    return this.postImagesService.retrieveImage(name, userId);
   }
 
   @UseGuards(AtJwtGuard)
-  @Delete(':name')
-  delete(@Param('name') name: string, @UserIdFromJwt() userId: string) {
-    return this.filesService.deleteFile(name, userId);
+  @Delete('post-image/:name')
+  deletePostImage(
+    @Param('name') name: string,
+    @UserIdFromJwt() userId: string,
+  ) {
+    return this.postImagesService.deleteImage(name, userId);
+  }
+
+  @UseGuards(AtJwtGuard)
+  @Delete('profile-image/:name')
+  deleteProfileImage(
+    @Param('name') name: string,
+    @UserIdFromJwt() userId: string,
+  ) {
+    return this.profileImagesService.deleteImage(name, userId);
   }
 }

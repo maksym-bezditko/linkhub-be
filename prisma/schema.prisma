@@ -10,117 +10,182 @@ generator client {
   provider = "prisma-client-js"
 }
 
-enum Role {
-  PROFILE_IMAGE @map("profile_image")
-  POST_IMAGE    @map("post_image")
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  TRANS
 }
 
 model User {
-  id String @id @default(uuid())
+  id String @id @default(uuid()) @db.Uuid
 
-  email        String @unique
-  passwordHash String @map("password_hash")
+  email        String @unique @db.VarChar(100)
+  passwordHash String @map("password_hash") @db.VarChar(500)
+
+  auth     Auth?
+  settings Settings?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   profile        Profile?
-  authInfo       AuthInfo?
-
+  profileImage   ProfileImage?
   posts          Post[]
   likes          Like[]
-  images         Image[]
-  followedBy     Follow[]  @relation("FollowingUserRelation")
-  followingUsers Follow[]  @relation("FollowedUserRelation")
+  postImages     PostImage[]
+  followedBy     Follow[]      @relation("FollowingUserRelation")
+  followingUsers Follow[]      @relation("FollowedUserRelation")
+
+  @@map("users")
 }
 
-model AuthInfo {
-  id String @id @default(uuid())
+model Auth {
+  id String @id @default(uuid()) @db.Uuid
 
-  user   User   @relation(fields: [userId], references: [id])
-  userId String @unique @map("user_id")
-
-  refreshTokenHash String? @map("refresh_token_hash")
+  refreshTokenHash String? @map("refresh_token_hash") @db.VarChar(500)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User?  @relation(fields: [userId], references: [id])
+  userId String @unique @map("user_id") @db.Uuid
+
+  @@map("auth")
+}
+
+model Settings {
+  id String @id @default(uuid()) @db.Uuid
+
+  darkTheme Boolean @map("dark_theme")
+
+  messageNotificationsEnabled       Boolean @map("message_notifications_enabled")
+  friendRequestNotificationsEnabled Boolean @map("friend_request_notifications_enabled")
+  likeNotificationsEnabled          Boolean @map("like_notifications_enabled")
+  followNotificationsEnabled        Boolean @map("follow_notifications_enabled")
+  commentNotificationsEnabled       Boolean @map("comment_notifications_enabled")
+
+  backupEnabled Boolean @map("backup_enabled")
+
+  recommendPeopleAroundEnabled Boolean @map("recommend_people_around_enabled")
+  sensitiveContentAllowed      Boolean @map("sensitive_content_allowed")
+
+  showLikesEnabled Boolean @map("should_show_likes")
+  isAccountPrivate Boolean @map("is_account_private")
+
+  shouldIgnoreMessagesFromStrangers Boolean @map("should_ignore_messages_from_strangers")
+  shouldAutomaticallyBlockSpam Boolean @map("should_automatically_block_spam")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User?  @relation(fields: [userId], references: [id])
+  userId String @unique @map("user_id") @db.Uuid
+
+  @@map("settings")
 }
 
 model Profile {
-  id String @id @default(uuid())
+  id String @id @default(uuid()) @db.Uuid
 
-  user   User   @relation(fields: [userId], references: [id])
-  userId String @unique @map("user_id")
+  profileImage ProfileImage?
+  bio      String? @db.VarChar(1000)
 
-  fullName String  @map("full_name")
-  bio      String?
-  userName String  @unique @map("user_name")
+  firstName String  @map("first_name") @db.VarChar(50)
+  lastName String  @map("last_name") @db.VarChar(50)
+
+  gender Gender
+
+  userName String  @unique @map("user_name") @db.VarChar(100)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  image Image?
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique @map("user_id") @db.Uuid
+
+  @@map("profiles")
 }
 
 model Post {
-  id String @id @default(uuid())
+  id String @id @default(uuid()) @db.Uuid
 
   caption  String?
-  location String?
+  location String? @db.VarChar(50)
 
   user   User   @relation(fields: [userId], references: [id])
-  userId String @map("user_id")
+  userId String @map("user_id") @db.Uuid
+
+  postImage PostImage?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
-  image Image?
 
   likes Like[]
+
+  @@map("posts")
 }
 
-model Image {
-  id String @id @default(uuid())
+model PostImage {
+  id String @id @default(uuid()) @db.Uuid
 
-  name String @unique
+  name String @unique @db.Uuid
 
-  role Role
+  owner   User   @relation(fields: [ownerId], references: [id])
+  ownerId String @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  post   Post?   @relation(fields: [postId], references: [id], onDelete: SetNull, onUpdate: SetNull)
-  postId String? @unique @map("post_id")
+  post   Post   @relation(fields: [postId], references: [id])
+  postId String @unique @map("post_id") @db.Uuid
 
-  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: SetNull, onUpdate: SetNull)
-  profileId String?  @unique @map("profile_id")
+  @@map("post_images")
+}
+
+model ProfileImage {
+  id String @id @default(uuid()) @db.Uuid
+
+  name String @unique @db.Uuid
 
   owner   User   @relation(fields: [ownerId], references: [id])
-  ownerId String
+  ownerId String @unique @map("owner_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  profile   Profile @relation(fields: [profileId], references: [id])
+  profileId String  @unique @map("profile_id") @db.Uuid
+
+  @@map("profile_images")
 }
 
 model Like {
-  id String @id @default(uuid())
+  id String @id @default(uuid()) @db.Uuid
 
   post   Post   @relation(fields: [postId], references: [id])
-  postId String @map("post_id")
+  postId String @map("post_id") @db.Uuid
 
   user   User   @relation(fields: [userId], references: [id])
-  userId String @map("user_id")
+  userId String @map("user_id") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("likes")
 }
 
 model Follow {
-  id String @id @default(uuid())
+  id String @id @default(uuid()) @db.Uuid
 
   follower   User   @relation("FollowingUserRelation", fields: [followerId], references: [id])
-  followerId String
+  followerId String @db.Uuid
 
   followedUser   User   @relation("FollowedUserRelation", fields: [followedUserId], references: [id])
-  followedUserId String
+  followedUserId String @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("follows")
 }
