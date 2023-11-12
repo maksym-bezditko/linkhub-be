@@ -8,10 +8,11 @@ import {
   UseInterceptors,
   UseGuards,
   Req,
+  UploadedFiles,
 } from '@nestjs/common';
-import { PostImagesService } from './services/post-images.service';
-import { ProfileImagesService } from './services/profile-images.service';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { PostImagesService } from './post-images.service';
+import { ProfileImagesService } from './profile-images.service';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { AtJwtGuard } from 'src/modules/auth/guards/jwt-at.guard';
 import { UserIdFromJwt } from 'src/decorators/user-id-from-jwt.decorator';
 import { Request } from 'express';
@@ -35,13 +36,13 @@ export class FilesController {
 
   @Post('upload-post-image')
   @UseGuards(AtJwtGuard)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FilesInterceptor('files'))
   uploadPostImage(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[],
     @Req() { body: { postId } }: Request,
     @UserIdFromJwt() userId: string,
   ) {
-    return this.postImagesService.uploadImage(file, userId, postId);
+    return this.postImagesService.uploadImages(files, userId, postId);
   }
 
   @UseGuards(AtJwtGuard)
@@ -66,11 +67,8 @@ export class FilesController {
   }
 
   @UseGuards(AtJwtGuard)
-  @Delete('profile-image/:name')
-  deleteProfileImage(
-    @Param('name') name: string,
-    @UserIdFromJwt() userId: string,
-  ) {
-    return this.profileImagesService.deleteImage(name, userId);
+  @Delete('profile-image')
+  deleteProfileImage(@UserIdFromJwt() userId: string) {
+    return this.profileImagesService.deleteProfileImage(userId);
   }
 }

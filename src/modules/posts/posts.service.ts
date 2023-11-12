@@ -1,22 +1,34 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/modules/database/prisma.service';
-import { CreatePostInput } from './graphql/definitions/mutations/create-post.definition';
-import { UpdatePostInput } from './graphql/definitions/mutations/update-post.definition';
+import { CreatePostInput } from '../../graphql/inputs/create-post.input';
+import { UpdatePostInput } from '../../graphql/inputs/update-post.input';
+import { PostResponse } from 'src/graphql/responses/post.response';
+import { GraphQLError } from 'graphql';
 
 @Injectable()
 export class PostsService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async getAllPosts() {
-    return this.prismaService.post.findMany();
-  }
+  async createPost(
+    userId: string,
+    createPostInput: CreatePostInput,
+  ): Promise<PostResponse> {
+    try {
+      const post = await this.prismaService.post.create({
+        data: {
+          ...createPostInput,
+          user: {
+            connect: {
+              id: userId,
+            },
+          },
+        },
+      });
 
-  async createPost(createPostInput: CreatePostInput) {
-    return this.prismaService.post.create({
-      data: {
-        ...createPostInput,
-      },
-    });
+      return post;
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
   }
 
   async deletePost(postId: string) {

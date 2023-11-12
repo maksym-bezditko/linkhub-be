@@ -10,20 +10,18 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import {
-  CUSTOM_PROVIDERS_NAMES,
-  PROFILE_IMAGE_RESIZE_OPTIONS,
-} from 'src/models';
+import { CUSTOM_PROVIDERS_NAMES, POST_IMAGE_RESIZE_OPTIONS } from 'src/models';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuid } from 'uuid';
 import * as sharp from 'sharp';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { PrismaService } from '../../database/prisma.service';
-import { PostImage, Profile, ProfileImage } from '@prisma/client';
+import { PrismaService } from '../database/prisma.service';
+import { PostImage } from '@prisma/client';
+import { Image } from 'src/models';
 
 @Injectable()
-export class ProfileImagesService {
+export class PostImagesService {
   constructor(
     @Inject(CUSTOM_PROVIDERS_NAMES.S3_CLIENT)
     private readonly s3Client: S3Client,
@@ -31,13 +29,13 @@ export class ProfileImagesService {
     private readonly prismaService: PrismaService,
   ) {}
 
-  async checkImageExists(ownerId: string) {
-    let image: PostImage | ProfileImage | null;
+  async checkImageBelongsToOwner(name: string, ownerId: string) {
+    let image: PostImage | null;
 
     try {
-      image = await this.prismaService.profileImage.findUnique({
+      image = await this.prismaService.postImage.findUnique({
         where: {
-          ownerId,
+          name,
         },
       });
     } catch (e) {
@@ -51,54 +49,30 @@ export class ProfileImagesService {
     if (image.ownerId !== ownerId) throw new UnauthorizedException();
   }
 
-  async ensureOwnersProfile(ownerId: string) {
-    let profile: Profile | null;
+  async uploadImages(
+    files: Express.Multer.File[],
+    ownerId: string,
+    postId: string,
+  ) {
+    const imageData: Image[] = [];
 
-    try {
-      profile = await this.prismaService.profile.findFirst({
-        where: {
-          user: {
-            id: ownerId,
-          },
-        },
-      });
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to find profile by ownerId',
-        e.message,
-      );
+    for (const file of files) {
+      imageData.push(await this.uploadImage(file, ownerId, postId));
     }
 
-    if (!profile || !profile.id)
-      throw new NotFoundException('Profile not found');
-
-    return profile;
+    return imageData;
   }
 
-  async uploadImage(file: Express.Multer.File, ownerId: string) {
-    const profile = await this.ensureOwnersProfile(ownerId);
-
-    // remove existing profile images if exists
-    try {
-      await this.prismaService.profileImage.deleteMany({
-        where: {
-          profile: {
-            id: profile.id,
-          },
-        },
-      });
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to delete an existing image associated with the profile',
-        e.message,
-      );
-    }
-
+  async uploadImage(
+    file: Express.Multer.File,
+    ownerId: string,
+    postId: string,
+  ) {
     let formattedImageBuffer: Buffer;
 
     try {
       formattedImageBuffer = await sharp(file.buffer)
-        .resize(PROFILE_IMAGE_RESIZE_OPTIONS)
+        .resize(POST_IMAGE_RESIZE_OPTIONS)
         .toBuffer();
     } catch (e) {
       throw new InternalServerErrorException(
@@ -132,11 +106,11 @@ export class ProfileImagesService {
     }
 
     try {
-      await this.prismaService.profileImage.create({
+      await this.prismaService.postImage.create({
         data: {
           name: imageName,
           ownerId,
-          profileId: profile.id,
+          postId,
         },
       });
     } catch (e) {
@@ -145,34 +119,18 @@ export class ProfileImagesService {
       );
     }
 
-    return this.retrieveImage(ownerId);
+    return this.retrieveImage(imageName, ownerId);
   }
 
-  async retrieveImage(ownerId: string) {
-    await this.checkImageExists(ownerId);
-
-    let image: ProfileImage;
-
-    try {
-      image = await this.prismaService.profileImage.findUnique({
-        where: {
-          ownerId,
-        },
-      });
-
-      if (!image) throw new Error('image not found');
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to get the image from the DB: ' + e.message,
-      );
-    }
+  async retrieveImage(name: string, ownerId: string): Promise<Image> {
+    await this.checkImageBelongsToOwner(name, ownerId);
 
     let getCommand: GetObjectCommand;
 
     try {
       getCommand = new GetObjectCommand({
         Bucket: this.configService.get('S3_BUCKET_NAME'),
-        Key: image.name,
+        Key: name,
       });
     } catch (e) {
       throw new InternalServerErrorException(
@@ -191,14 +149,13 @@ export class ProfileImagesService {
     }
 
     return {
-      imageId: image.id,
-      name: image.name,
+      name: name,
       url,
     };
   }
 
   async deleteImage(name: string, ownerId: string) {
-    await this.checkImageExists(ownerId);
+    await this.checkImageBelongsToOwner(name, ownerId);
 
     let deleteCommand: DeleteObjectCommand;
 
@@ -222,7 +179,7 @@ export class ProfileImagesService {
     }
 
     try {
-      await this.prismaService.profileImage.delete({
+      await this.prismaService.postImage.delete({
         where: {
           name,
         },

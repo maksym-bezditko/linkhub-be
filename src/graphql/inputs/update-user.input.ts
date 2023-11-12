@@ -11,15 +11,19 @@ import {
 } from 'class-validator';
 
 @InputType()
-export class CreateUserInput {
+export class UpdateUserInput {
   @IsEmail()
   @Field()
-  email: string;
+  @ValidateIf((_, value) => value !== null)
+  @Field({ nullable: true })
+  email: string | null;
 
   @IsString()
   @MinLength(6)
   @Field()
-  password: string;
+  @ValidateIf((_, value) => value !== null)
+  @Field({ nullable: true })
+  password: string | null;
 
   @IsString()
   @IsNotEmpty()
@@ -32,21 +36,29 @@ export class CreateUserInput {
   @IsNotEmpty()
   @MaxLength(50)
   @Field()
-  firstName: string;
+  @ValidateIf((_, value) => value !== null)
+  @Field({ nullable: true })
+  firstName: string | null;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)
   @Field()
-  lastName: string;
+  @ValidateIf((_, value) => value !== null)
+  @Field({ nullable: true })
+  lastName: string | null;
 
   @Field()
   @IsEnum(Sex)
-  sex: Sex;
+  @ValidateIf((_, value) => value !== null)
+  @Field({ nullable: true })
+  sex: Sex | null;
 
   @IsString()
   @MaxLength(50)
   @IsNotEmpty()
   @Field()
-  nickname: string;
+  @ValidateIf((_, value) => value !== null)
+  @Field({ nullable: true })
+  nickname: string | null;
 }
