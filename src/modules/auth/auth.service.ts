@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Auth, User } from '@prisma/client';
+import { User } from '@prisma/client';
 import { hash, verify } from 'argon2';
 import { PrismaService } from 'src/modules/database/prisma.service';
 import { UserIdResponse } from '../../graphql/responses/user-id.response';
@@ -12,7 +12,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { CreateUserInput } from '../../graphql/inputs/create-user.input';
 import { CheckForEmailExistenceInput } from '../../graphql/inputs/check-for-email-existence.input';
 import { CommonResponse } from 'src/graphql/responses/common.response';
-import { CheckForUsernameExistenceInput } from 'src/graphql/inputs/check-for-username-existence.input';
+import { CheckForNicknameExistenceInput } from 'src/graphql/inputs/check-for-nickname-existence.input';
+import { UserResponse } from 'src/graphql/responses/user.response';
+import { UpdateUserInput } from 'src/graphql/inputs/update-user.input';
 
 @Injectable()
 export class AuthService {
@@ -29,21 +31,75 @@ export class AuthService {
   async allUsers() {
     return this.prismaService.user.findMany({
       include: {
-        profile: true,
-        auth: true,
         followedBy: true,
         followingUsers: true,
         likes: true,
         postImages: true,
         posts: true,
-        profileImage: true,
+        settings: true,
       },
     });
   }
 
-  async updateAuthInfo(
+  async updateUser(
     userId: string,
-    authInfo: Partial<Auth>,
+    updateUserInput: UpdateUserInput,
+  ): Promise<CommonResponse> {
+    const fieldToUpdate = {};
+
+    for (const [key, value] of Object.entries(updateUserInput)) {
+      if (!value) {
+        continue;
+      } else if (key === 'password') {
+        const passwordHash = await this.hashData(value);
+
+        fieldToUpdate['passwordHash'] = passwordHash;
+      } else {
+        fieldToUpdate[key] = value;
+      }
+    }
+
+    try {
+      await this.prismaService.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          ...fieldToUpdate,
+        },
+      });
+
+      return {
+        succeeded: true,
+      };
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async getUserById(userId: string): Promise<UserResponse> {
+    let user: User;
+
+    try {
+      user = await this.prismaService.user.findUnique({
+        where: {
+          id: userId,
+        },
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      return user;
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async updateRefreshTokenHash(
+    userId: string,
+    refreshTokenHash: string,
   ): Promise<Omit<User, 'passwordHash'>> {
     try {
       const user = await this.prismaService.user.update({
@@ -51,18 +107,14 @@ export class AuthService {
           id: userId,
         },
         data: {
-          auth: {
-            update: {
-              ...authInfo,
-            },
-          },
+          refreshTokenHash,
         },
       });
 
       delete user['passwordHash'];
 
       return user;
-    } catch (e: any) {
+    } catch (e) {
       throw new GraphQLError(e.message);
     }
   }
@@ -117,9 +169,10 @@ export class AuthService {
         user.id,
       );
 
-      await this.updateAuthInfo(user.id, {
-        refreshTokenHash: await this.hashData(refreshToken),
-      });
+      await this.updateRefreshTokenHash(
+        user.id,
+        await this.hashData(refreshToken),
+      );
 
       return {
         accessToken,
@@ -144,18 +197,28 @@ export class AuthService {
           id: userId,
           email: createUserInput.email,
           passwordHash: await this.hashData(createUserInput.password),
-          auth: {
+          refreshTokenHash: await this.hashData(refreshToken),
+          bio: createUserInput.bio,
+          firstName: createUserInput.firstName,
+          lastName: createUserInput.lastName,
+          nickname: createUserInput.nickname,
+          sex: createUserInput.sex,
+          profileImageName: null,
+          settings: {
             create: {
-              refreshTokenHash: await this.hashData(refreshToken),
-            },
-          },
-          profile: {
-            create: {
-              bio: createUserInput.bio,
-              firstName: createUserInput.firstName,
-              lastName: createUserInput.lastName,
-              userName: createUserInput.userName,
-              gender: createUserInput.gender,
+              darkThemeEnabled: false,
+              backupEnabled: false,
+              commentNotificationsEnabled: true,
+              friendRequestNotificationsEnabled: true,
+              likeNotificationsEnabled: true,
+              likesVisibilityEnabled: true,
+              messageNotificationsEnabled: true,
+              peopleRecommendationsEnabled: true,
+              privateAccountEnabled: false,
+              sensitiveContentAllowed: false,
+              spamBlockEnabled: true,
+              strangerMessagesEnabled: true,
+              subscriptionNotificationsEnabled: true,
             },
           },
         },
@@ -174,7 +237,7 @@ export class AuthService {
     checkForEmailExistenceInput: CheckForEmailExistenceInput,
   ): Promise<CommonResponse> {
     try {
-      const user = await this.prismaService.user.findFirst({
+      const user = await this.prismaService.user.findUnique({
         where: { email: checkForEmailExistenceInput.email },
       });
 
@@ -186,13 +249,13 @@ export class AuthService {
     }
   }
 
-  async checkForUsernameExistence(
-    checkForUsernameExistenceInput: CheckForUsernameExistenceInput,
+  async checkForNicknameExistence(
+    checkForUsernameExistenceInput: CheckForNicknameExistenceInput,
   ): Promise<CommonResponse> {
     try {
       const user = await this.prismaService.user.findFirst({
         where: {
-          profile: { userName: checkForUsernameExistenceInput.userName },
+          nickname: checkForUsernameExistenceInput.nickname,
         },
       });
 
@@ -211,13 +274,7 @@ export class AuthService {
           id: userId,
         },
         data: {
-          auth: {
-            update: {
-              data: {
-                refreshTokenHash: null,
-              },
-            },
-          },
+          refreshTokenHash: null,
         },
       });
 
@@ -233,24 +290,27 @@ export class AuthService {
         where: {
           id: userId,
         },
-        include: {
-          auth: true,
+        select: {
+          id: true,
+          refreshTokenHash: true,
+          email: true,
         },
       });
 
       if (
         !user ||
-        !user.auth.refreshTokenHash ||
-        !(await verify(user.auth.refreshTokenHash, refreshToken))
+        !user.refreshTokenHash ||
+        !(await verify(user.refreshTokenHash, refreshToken))
       )
         throw new UnauthorizedException();
 
       const { accessToken, refreshToken: newRefreshToken } =
         await this.getTokens(user.email, user.id);
 
-      await this.updateAuthInfo(user.id, {
-        refreshTokenHash: await this.hashData(refreshToken),
-      });
+      await this.updateRefreshTokenHash(
+        user.id,
+        await this.hashData(refreshToken),
+      );
 
       return {
         accessToken,

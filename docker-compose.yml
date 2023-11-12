@@ -7,6 +7,9 @@ services:
     restart: always
     environment:
       PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_DB: linkhub
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: CCiTEDa9
     ports:
       - "5433:5432"
     volumes:

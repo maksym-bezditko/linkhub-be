@@ -9,9 +9,10 @@ import { AuthService } from './auth.service';
 import { CreateUserInput } from '../../graphql/inputs/create-user.input';
 import { CheckForEmailExistenceInput } from '../../graphql/inputs/check-for-email-existence.input';
 import { CommonResponse } from 'src/graphql/responses/common.response';
-import { CheckForUsernameExistenceInput } from 'src/graphql/inputs/check-for-username-existence.input';
+import { CheckForNicknameExistenceInput } from 'src/graphql/inputs/check-for-nickname-existence.input';
 import { UserIdFromJwt } from 'src/decorators/user-id-from-jwt.decorator';
 import { UserResponse } from 'src/graphql/responses/user.response';
+import { UpdateUserInput } from 'src/graphql/inputs/update-user.input';
 
 @Resolver()
 export class AuthResolver {
@@ -22,6 +23,21 @@ export class AuthResolver {
     @Args('createUserInput') createUserInput: CreateUserInput,
   ): Promise<TokensResponse> {
     return this.authService.createUser(createUserInput);
+  }
+
+  @UseGuards(AtJwtGuard)
+  @Mutation(() => CommonResponse)
+  updateUser(
+    @Args('updateUserInput') updateUserInput: UpdateUserInput,
+    @UserIdFromJwt() userId: string,
+  ): Promise<CommonResponse> {
+    return this.authService.updateUser(userId, updateUserInput);
+  }
+
+  @Query(() => UserResponse)
+  @UseGuards(AtJwtGuard)
+  getUserById(@UserIdFromJwt() userId: string): Promise<UserResponse> {
+    return this.authService.getUserById(userId);
   }
 
   @Query(() => TokensResponse)
@@ -45,11 +61,11 @@ export class AuthResolver {
   }
 
   @Query(() => CommonResponse)
-  checkForUsernameExistence(
-    @Args('checkForUsernameExistenceInput')
-    checkForUsernameExistenceInput: CheckForUsernameExistenceInput,
+  checkForNicknameExistence(
+    @Args('checkForNicknameExistenceInput')
+    checkForUsernameExistenceInput: CheckForNicknameExistenceInput,
   ): Promise<CommonResponse> {
-    return this.authService.checkForUsernameExistence(
+    return this.authService.checkForNicknameExistence(
       checkForUsernameExistenceInput,
     );
   }

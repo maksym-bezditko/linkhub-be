@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { PostImagesService } from './services/post-images.service';
-import { ProfileImagesService } from './services/profile-images.service';
+import { PostImagesService } from './post-images.service';
+import { ProfileImagesService } from './profile-images.service';
 import { FilesController } from './files.controller';
 import { CUSTOM_PROVIDERS_NAMES } from 'src/models';
 import { ConfigModule, ConfigService } from '@nestjs/config';

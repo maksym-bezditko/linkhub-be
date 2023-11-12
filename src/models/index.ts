@@ -31,7 +31,7 @@ export type Tables = keyof Omit<
   | '$use'
 >;
 
-export type ImageModelNames = keyof Pick<
-  PrismaClient,
-  'profileImage' | 'postImage'
->;
+export type Image = {
+  name: string;
+  url: string;
+};
