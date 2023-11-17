@@ -47,11 +47,6 @@ export class AuthResolver {
     return this.authService.loginWithEmail(loginWithEmailInput);
   }
 
-  @Query(() => [UserResponse])
-  allUsers(): Promise<UserResponse[]> {
-    return this.authService.allUsers();
-  }
-
   @Query(() => CommonResponse)
   checkForEmailExistence(
     @Args('checkForEmailExistenceInput')

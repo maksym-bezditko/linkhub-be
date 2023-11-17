@@ -12,7 +12,7 @@ CREATE TABLE "users" (
     "last_name" VARCHAR(50) NOT NULL,
     "sex" "Sex" NOT NULL,
     "nickname" VARCHAR(100) NOT NULL,
-    "profile_image_name" UUID NOT NULL,
+    "profile_image_name" UUID,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -55,6 +55,25 @@ CREATE TABLE "posts" (
 );
 
 -- CreateTable
+CREATE TABLE "hashtags" (
+    "id" UUID NOT NULL,
+    "name" TEXT NOT NULL,
+
+    CONSTRAINT "hashtags_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "posts_hashtags" (
+    "id" UUID NOT NULL,
+    "postId" UUID NOT NULL,
+    "hashtagId" UUID NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "posts_hashtags_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "post_images" (
     "id" UUID NOT NULL,
     "name" UUID NOT NULL,
@@ -64,15 +83,6 @@ CREATE TABLE "post_images" (
     "post_id" UUID NOT NULL,
 
     CONSTRAINT "post_images_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "hashtags" (
-    "id" UUID NOT NULL,
-    "post_id" UUID NOT NULL,
-    "name" UUID NOT NULL,
-
-    CONSTRAINT "hashtags_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -110,10 +120,10 @@ CREATE UNIQUE INDEX "users_profile_image_name_key" ON "users"("profile_image_nam
 CREATE UNIQUE INDEX "settings_user_id_key" ON "settings"("user_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "post_images_name_key" ON "post_images"("name");
+CREATE UNIQUE INDEX "hashtags_name_key" ON "hashtags"("name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "hashtags_name_key" ON "hashtags"("name");
+CREATE UNIQUE INDEX "post_images_name_key" ON "post_images"("name");
 
 -- AddForeignKey
 ALTER TABLE "settings" ADD CONSTRAINT "settings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -122,13 +132,16 @@ ALTER TABLE "settings" ADD CONSTRAINT "settings_user_id_fkey" FOREIGN KEY ("user
 ALTER TABLE "posts" ADD CONSTRAINT "posts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "posts_hashtags" ADD CONSTRAINT "posts_hashtags_postId_fkey" FOREIGN KEY ("postId") REFERENCES "posts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "posts_hashtags" ADD CONSTRAINT "posts_hashtags_hashtagId_fkey" FOREIGN KEY ("hashtagId") REFERENCES "hashtags"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "post_images" ADD CONSTRAINT "post_images_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "post_images" ADD CONSTRAINT "post_images_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "posts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "hashtags" ADD CONSTRAINT "hashtags_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "posts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "likes" ADD CONSTRAINT "likes_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "posts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

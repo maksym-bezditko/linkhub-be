@@ -6,6 +6,7 @@ import { join } from 'path';
 import { PostsModule } from './posts/posts.module';
 import { GraphQLFormattedError } from 'graphql';
 import { FilesModule } from './files/files.module';
+import { FriendsModule } from './friends/friends.module';
 
 @Module({
   imports: [
@@ -29,6 +30,8 @@ import { FilesModule } from './files/files.module';
     AuthModule,
 
     FilesModule,
+
+    FriendsModule,
   ],
 })
 export class AppModule {}

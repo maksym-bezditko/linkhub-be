@@ -7,13 +7,7 @@ export class PostImageResponse implements Partial<PostImage> {
   id: string;
 
   @Field()
-  name: string;
-
-  @Field()
-  ownerId: string;
-
-  @Field()
-  postId: string;
+  url: string;
 
   @Field()
   createdAt: Date;

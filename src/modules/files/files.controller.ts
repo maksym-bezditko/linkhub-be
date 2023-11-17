@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
   UploadedFiles,
+  Body,
 } from '@nestjs/common';
 import { PostImagesService } from './post-images.service';
 import { ProfileImagesService } from './profile-images.service';
@@ -45,9 +46,8 @@ export class FilesController {
     return this.postImagesService.uploadImages(files, userId, postId);
   }
 
-  @UseGuards(AtJwtGuard)
-  @Get('retrieve-profile-image')
-  retrieveProfileImage(@UserIdFromJwt() userId: string) {
+  @Post('retrieve-profile-image')
+  retrieveProfileImage(@Body() { userId }: { userId: string }) {
     return this.profileImagesService.retrieveImage(userId);
   }
 

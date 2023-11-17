@@ -36,11 +36,11 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  posts          Post[]
-  likes          Like[]
-  postImages     PostImage[]
-  followedBy     Follow[]    @relation("FollowingUserRelation")
-  followingUsers Follow[]    @relation("FollowedUserRelation")
+  posts      Post[]
+  likes      Like[]
+  postImages PostImage[]
+  followedBy Follow[]    @relation("FollowingUserRelation")
+  following  Follow[]    @relation("FollowedUserRelation")
 
   @@map("users")
 }
@@ -70,7 +70,7 @@ model Settings {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user   User?  @relation(fields: [userId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   userId String @unique @map("user_id") @db.Uuid
 
   @@map("settings")
@@ -82,17 +82,41 @@ model Post {
   caption  String?
   location String? @db.VarChar(50)
 
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   userId String @map("user_id") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  postImages PostImage[]
-  hashtags   Hashtags[]
-  likes      Like[]
+  postImages      PostImage[]
+  postsOnHashtags PostsOnHashtags[]
+  likes           Like[]
 
   @@map("posts")
+}
+
+model Hashtag {
+  id String @id @default(uuid()) @db.Uuid
+
+  postsOnHashtags PostsOnHashtags[]
+
+  name String @unique
+
+  @@map("hashtags")
+}
+
+model PostsOnHashtags {
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  postId String @db.Uuid
+
+  hashtag   Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  hashtagId String  @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([postId, hashtagId])
+  @@map("posts_hashtags")
 }
 
 model PostImage {
@@ -100,55 +124,42 @@ model PostImage {
 
   name String @unique @db.Uuid
 
-  owner   User   @relation(fields: [ownerId], references: [id])
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   ownerId String @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  post   Post   @relation(fields: [postId], references: [id])
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   postId String @map("post_id") @db.Uuid
 
   @@map("post_images")
 }
 
-model Hashtags {
-  id String @id @default(uuid()) @db.Uuid
-
-  post   Post   @relation(fields: [postId], references: [id])
-  postId String @map("post_id") @db.Uuid
-
-  name String @unique @db.Uuid
-
-  @@map("hashtags")
-}
-
 model Like {
-  id String @id @default(uuid()) @db.Uuid
-
-  post   Post   @relation(fields: [postId], references: [id])
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   postId String @map("post_id") @db.Uuid
 
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   userId String @map("user_id") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@id([postId, userId])
   @@map("likes")
 }
 
 model Follow {
-  id String @id @default(uuid()) @db.Uuid
+  following       User   @relation("FollowingUserRelation", fields: [followingUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  followingUserId String @db.Uuid
 
-  follower   User   @relation("FollowingUserRelation", fields: [followerId], references: [id])
-  followerId String @db.Uuid
-
-  followedUser   User   @relation("FollowedUserRelation", fields: [followedUserId], references: [id])
+  followedUser   User   @relation("FollowedUserRelation", fields: [followedUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   followedUserId String @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@id([followingUserId, followedUserId])
   @@map("follows")
 }

@@ -32,7 +32,7 @@ export class AuthService {
     return this.prismaService.user.findMany({
       include: {
         followedBy: true,
-        followingUsers: true,
+        following: true,
         likes: true,
         postImages: true,
         posts: true,
@@ -78,12 +78,34 @@ export class AuthService {
   }
 
   async getUserById(userId: string): Promise<UserResponse> {
-    let user: User;
+    let user: UserResponse;
 
     try {
       user = await this.prismaService.user.findUnique({
         where: {
           id: userId,
+        },
+        include: {
+          followedBy: true,
+          following: true,
+          posts: {
+            select: {
+              id: true,
+              caption: true,
+              location: true,
+              postImages: true,
+              likes: true,
+              userId: false,
+              user: {
+                select: {
+                  id: true,
+                  nickname: true,
+                },
+              },
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
         },
       });
 
