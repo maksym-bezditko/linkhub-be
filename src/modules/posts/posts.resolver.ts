@@ -31,6 +31,18 @@ export class PostsResolver {
   }
 
   @UseGuards(AtJwtGuard)
+  @Query(() => [PostWithImagesAndLikesResponse])
+  getFriendsPosts(@UserIdFromJwt() userId: string) {
+    return this.postsService.getFriendsPosts(userId);
+  }
+
+  @UseGuards(AtJwtGuard)
+  @Query(() => [PostWithImagesAndLikesResponse])
+  getPostsRecommendations(@UserIdFromJwt() userId: string) {
+    return this.postsService.getPostsRecommendations(userId);
+  }
+
+  @UseGuards(AtJwtGuard)
   @Mutation(() => CommonResponse)
   deletePost(
     @UserIdFromJwt() userId: string,

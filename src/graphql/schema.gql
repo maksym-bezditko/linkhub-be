@@ -114,11 +114,22 @@ type PostWithImagesAndLikesResponse {
 type Query {
   checkForEmailExistence(checkForEmailExistenceInput: CheckForEmailExistenceInput!): CommonResponse!
   checkForNicknameExistence(checkForNicknameExistenceInput: CheckForNicknameExistenceInput!): CommonResponse!
+  getFriendsPosts: [PostWithImagesAndLikesResponse!]!
+  getPostsRecommendations: [PostWithImagesAndLikesResponse!]!
   getRecommendations: [UserResponse!]!
   getUserById: UserResponse!
   getUserPosts: [PostWithImagesAndLikesResponse!]!
   loginWithEmail(loginWithEmailInput: LoginWithEmailInput!): TokensResponse!
   refreshTokens: TokensResponse!
+  searchUsers(searchUsersInput: SearchUsersInput!): [UserResponse!]!
+}
+
+input SearchUsersInput {
+  searchBy: String!
+  searchText: String!
+  sex: String!
+  sortBy: String!
+  withPostsOnly: Boolean!
 }
 
 type TokensResponse {

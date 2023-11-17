@@ -29,6 +29,112 @@ export class PostsService {
     private readonly configService: ConfigService,
   ) {}
 
+  async getFriendsPosts(
+    userId: string,
+  ): Promise<PostWithImagesAndLikesResponse[]> {
+    try {
+      const posts = await this.prismaService.post.findMany({
+        where: {
+          user: {
+            following: {
+              some: {
+                followingUserId: userId,
+              },
+            },
+          },
+        },
+        select: {
+          id: true,
+          caption: true,
+          location: true,
+          postImages: true,
+          likes: true,
+          userId: false,
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return await Promise.all(posts.map((post) => this.mapPostResponse(post)));
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async getPostsRecommendations(
+    userId: string,
+  ): Promise<PostWithImagesAndLikesResponse[]> {
+    try {
+      const myHashtags = await this.prismaService.post.findMany({
+        where: {
+          userId,
+        },
+        select: {
+          postsOnHashtags: {
+            select: {
+              hashtag: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const posts = await this.prismaService.post.findMany({
+        where: {
+          AND: [
+            {
+              postsOnHashtags: {
+                some: {
+                  hashtag: {
+                    name: {
+                      in: myHashtags.flatMap((post) =>
+                        post.postsOnHashtags.map((h) => h.hashtag.name),
+                      ),
+                    },
+                  },
+                },
+              },
+            },
+            {
+              userId: {
+                not: userId,
+              },
+            },
+          ],
+        },
+        select: {
+          id: true,
+          caption: true,
+          location: true,
+          postImages: true,
+          likes: true,
+          userId: false,
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+            },
+          },
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return await Promise.all(posts.map((post) => this.mapPostResponse(post)));
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
   async createPost(
     userId: string,
     { hashtags, ...postData }: CreatePostInput,
