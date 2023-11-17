@@ -4,13 +4,10 @@ import { Follow } from '@prisma/client';
 @ObjectType()
 export class FollowResponse implements Partial<Follow> {
   @Field()
-  id: string;
+  followingUserId: string;
 
   @Field()
   followedUserId: string;
-
-  @Field()
-  followerId: string;
 
   @Field()
   createdAt: Date;

@@ -11,4 +11,7 @@ export class CreatePostInput implements Partial<PostType> {
   @ValidateIf((_, value) => value !== null)
   @Field({ nullable: true })
   location: string;
+
+  @Field(() => [String])
+  hashtags: string[];
 }

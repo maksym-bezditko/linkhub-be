@@ -1,10 +1,9 @@
 import { Field, ObjectType } from '@nestjs/graphql';
 import { Sex, User } from '@prisma/client';
 import { FollowResponse } from './follow.response';
-import { PostResponse } from './post.response';
 
 @ObjectType()
-export class UserResponse implements Partial<User> {
+export class UserRecommendationResponse implements Partial<User> {
   @Field()
   id: string;
 
@@ -29,20 +28,17 @@ export class UserResponse implements Partial<User> {
   @Field()
   sex: Sex;
 
-  @Field()
-  nickname: string;
-
-  @Field({ nullable: true })
-  profileImageName: string;
-
   @Field(() => [FollowResponse])
   followedBy: FollowResponse[];
 
   @Field(() => [FollowResponse])
   following: FollowResponse[];
 
-  @Field(() => [PostResponse])
-  posts: PostResponse[];
+  @Field()
+  nickname: string;
+
+  @Field({ nullable: true })
+  profileImageName: string;
 
   @Field()
   createdAt: Date;
