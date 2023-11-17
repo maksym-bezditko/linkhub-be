@@ -35,3 +35,19 @@ export type Image = {
   name: string;
   url: string;
 };
+
+export enum SearchBy {
+  NICKNAME = 'nickname',
+  FULLNAME = 'fullname',
+}
+
+export enum SortBy {
+  FULLNAME = 'fullname',
+  DATE_OF_ACCOUNT_CREATION = 'dateOfAccountCreation',
+}
+
+export enum SexFilter {
+  ALL = 'all',
+  MALES = 'males',
+  FEMALES = 'females',
+}

@@ -7,6 +7,7 @@ import { UserResponse } from 'src/graphql/responses/user.response';
 import { CommonResponse } from 'src/graphql/responses/common.response';
 import { FollowUserInput } from 'src/graphql/inputs/follow-user.input';
 import { UnfollowUserInput } from 'src/graphql/inputs/unfollow-user.input';
+import { SearchUsersInput } from 'src/graphql/inputs/search-user.input';
 
 @Resolver(() => UserResponse)
 export class FriendsResolver {
@@ -34,5 +35,10 @@ export class FriendsResolver {
     @Args('unfollowUserInput') unlikePostInput: UnfollowUserInput,
   ) {
     return this.friendsService.unfollowUser(unlikePostInput, userId);
+  }
+
+  @Query(() => [UserResponse])
+  searchUsers(@Args('searchUsersInput') searchUsersInput: SearchUsersInput) {
+    return this.friendsService.searchUsers(searchUsersInput);
   }
 }
