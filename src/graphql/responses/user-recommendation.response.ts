@@ -28,6 +28,9 @@ export class UserRecommendationResponse implements Partial<User> {
   @Field()
   sex: Sex;
 
+  @Field()
+  birthday: Date;
+
   @Field(() => [FollowResponse])
   followedBy: FollowResponse[];
 

@@ -1,6 +1,7 @@
 import { Field, InputType } from '@nestjs/graphql';
 import { Sex } from '@prisma/client';
 import {
+  IsDateString,
   IsEmail,
   IsEnum,
   IsNotEmpty,
@@ -47,6 +48,12 @@ export class UpdateUserInput {
   @ValidateIf((_, value) => value !== null)
   @Field({ nullable: true })
   lastName: string | null;
+
+  @Field()
+  @IsDateString()
+  @ValidateIf((_, value) => value !== null)
+  @Field({ nullable: true })
+  birthday: string | null;
 
   @Field()
   @IsEnum(Sex)

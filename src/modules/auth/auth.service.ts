@@ -223,6 +223,7 @@ export class AuthService {
           bio: createUserInput.bio,
           firstName: createUserInput.firstName,
           lastName: createUserInput.lastName,
+          birthday: createUserInput.birthday,
           nickname: createUserInput.nickname,
           sex: createUserInput.sex,
           profileImageName: null,

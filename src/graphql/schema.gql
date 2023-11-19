@@ -22,6 +22,7 @@ input CreatePostInput {
 
 input CreateUserInput {
   bio: String
+  birthday: String!
   email: String!
   firstName: String!
   lastName: String!
@@ -48,6 +49,11 @@ type FollowResponse {
 
 input FollowUserInput {
   userId: String!
+}
+
+type FollowsByAgeStatsResponse {
+  female: Stats!
+  male: Stats!
 }
 
 input LikePostInput {
@@ -114,6 +120,7 @@ type PostWithImagesAndLikesResponse {
 type Query {
   checkForEmailExistence(checkForEmailExistenceInput: CheckForEmailExistenceInput!): CommonResponse!
   checkForNicknameExistence(checkForNicknameExistenceInput: CheckForNicknameExistenceInput!): CommonResponse!
+  getFollowsByAgeStats: FollowsByAgeStatsResponse!
   getFriendsPosts: [PostWithImagesAndLikesResponse!]!
   getPostsRecommendations: [PostWithImagesAndLikesResponse!]!
   getRecommendations: [UserResponse!]!
@@ -130,6 +137,17 @@ input SearchUsersInput {
   sex: String!
   sortBy: String!
   withPostsOnly: Boolean!
+}
+
+type Stats {
+  to10: Float!
+  to20: Float!
+  to30: Float!
+  to40: Float!
+  to50: Float!
+  to60: Float!
+  to70: Float!
+  to80: Float!
 }
 
 type TokensResponse {
@@ -154,6 +172,7 @@ input UpdatePostInput {
 
 input UpdateUserInput {
   bio: String
+  birthday: String
   email: String
   firstName: String
   lastName: String
@@ -168,6 +187,7 @@ type UserIdResponse {
 
 type UserResponse {
   bio: String
+  birthday: DateTime!
   createdAt: DateTime!
   email: String!
   firstName: String!

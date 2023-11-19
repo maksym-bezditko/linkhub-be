@@ -30,6 +30,9 @@ export class UserResponse implements Partial<User> {
   sex: Sex;
 
   @Field()
+  birthday: Date;
+
+  @Field()
   nickname: string;
 
   @Field({ nullable: true })

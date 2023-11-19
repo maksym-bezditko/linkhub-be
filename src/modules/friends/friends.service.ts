@@ -159,10 +159,10 @@ export class FriendsService {
           searchUsersInput.sortBy === SortBy.FULLNAME
             ? [
                 {
-                  firstName: 'desc',
+                  firstName: 'asc',
                 },
                 {
-                  lastName: 'desc',
+                  lastName: 'asc',
                 },
               ]
             : [

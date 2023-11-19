@@ -1,6 +1,7 @@
 import { Field, InputType } from '@nestjs/graphql';
 import { Sex } from '@prisma/client';
 import {
+  IsDateString,
   IsEmail,
   IsEnum,
   IsNotEmpty,
@@ -43,6 +44,10 @@ export class CreateUserInput {
   @Field()
   @IsEnum(Sex)
   sex: Sex;
+
+  @Field()
+  @IsDateString()
+  birthday: string;
 
   @IsString()
   @MaxLength(50)
