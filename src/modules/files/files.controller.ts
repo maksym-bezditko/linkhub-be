@@ -30,7 +30,7 @@ export class FilesController {
   @UseInterceptors(FileInterceptor('file'))
   uploadProfileImage(
     @UploadedFile() file: Express.Multer.File,
-    @UserIdFromJwt() userId: string,
+    @UserIdFromJwt() userId: number,
   ) {
     return this.profileImagesService.uploadImage(file, userId);
   }
@@ -41,19 +41,19 @@ export class FilesController {
   uploadPostImage(
     @UploadedFiles() files: Express.Multer.File[],
     @Req() { body: { postId } }: Request,
-    @UserIdFromJwt() userId: string,
+    @UserIdFromJwt() userId: number,
   ) {
     return this.postImagesService.uploadImages(files, userId, postId);
   }
 
   @Post('retrieve-profile-image')
-  retrieveProfileImage(@Body() { userId }: { userId: string }) {
+  retrieveProfileImage(@Body() { userId }: { userId: number }) {
     return this.profileImagesService.retrieveImage(userId);
   }
 
   @UseGuards(AtJwtGuard)
   @Get('retrieve-post-image/:name')
-  retrieve(@Param('name') name: string, @UserIdFromJwt() userId: string) {
+  retrieve(@Param('name') name: string, @UserIdFromJwt() userId: number) {
     return this.postImagesService.retrieveImage(name, userId);
   }
 
@@ -61,14 +61,14 @@ export class FilesController {
   @Delete('post-image/:name')
   deletePostImage(
     @Param('name') name: string,
-    @UserIdFromJwt() userId: string,
+    @UserIdFromJwt() userId: number,
   ) {
     return this.postImagesService.deleteImage(name, userId);
   }
 
   @UseGuards(AtJwtGuard)
   @Delete('profile-image')
-  deleteProfileImage(@UserIdFromJwt() userId: string) {
+  deleteProfileImage(@UserIdFromJwt() userId: number) {
     return this.profileImagesService.deleteProfileImage(userId);
   }
 }

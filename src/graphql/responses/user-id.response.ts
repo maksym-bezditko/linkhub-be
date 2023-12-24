@@ -3,5 +3,5 @@ import { Field, ObjectType } from '@nestjs/graphql';
 @ObjectType()
 export class UserIdResponse {
   @Field()
-  userId: string;
+  userId: number;
 }

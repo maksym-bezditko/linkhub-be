@@ -37,18 +37,18 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 scalar DateTime
 
 input DeletePostInput {
-  postId: String!
+  postId: Float!
 }
 
 type FollowResponse {
   createdAt: DateTime!
-  followedUserId: String!
-  followingUserId: String!
+  followedUserId: Float!
+  followingUserId: Float!
   updatedAt: DateTime!
 }
 
 input FollowUserInput {
-  userId: String!
+  userId: Float!
 }
 
 type FollowsByAgeStatsResponse {
@@ -56,15 +56,24 @@ type FollowsByAgeStatsResponse {
   male: Stats!
 }
 
+type HashtagResponse {
+  id: Float!
+  name: String!
+}
+
+input HashtagsInput {
+  tags: [String!]!
+}
+
 input LikePostInput {
-  postId: String!
+  postId: Float!
 }
 
 type LikeResponse {
   createdAt: DateTime!
-  postId: String!
+  postId: Float!
   updatedAt: DateTime!
-  userId: String!
+  userId: Float!
 }
 
 input LoginWithEmailInput {
@@ -75,6 +84,7 @@ input LoginWithEmailInput {
 type Mutation {
   createPost(createPostInput: CreatePostInput!): PostWithImagesAndLikesResponse!
   createUser(createUserInput: CreateUserInput!): TokensResponse!
+  deleteAccount: CommonResponse!
   deletePost(deletePostInput: DeletePostInput!): CommonResponse!
   followUser(followUserInput: FollowUserInput!): CommonResponse!
   likePost(likePostInput: LikePostInput!): CommonResponse!
@@ -87,20 +97,20 @@ type Mutation {
 
 type PostImageResponse {
   createdAt: DateTime!
-  id: String!
+  id: Float!
   updatedAt: DateTime!
   url: String!
 }
 
 type PostOwnerResponse {
-  id: String!
+  id: Float!
   nickname: String!
 }
 
 type PostResponse {
   caption: String
   createdAt: DateTime!
-  id: String!
+  id: Float!
   location: String
   updatedAt: DateTime!
   user: PostOwnerResponse!
@@ -109,7 +119,7 @@ type PostResponse {
 type PostWithImagesAndLikesResponse {
   caption: String
   createdAt: DateTime!
-  id: String!
+  id: Float!
   likes: [LikeResponse!]!
   location: String
   postImages: [PostImageResponse!]!
@@ -121,11 +131,15 @@ type Query {
   checkForEmailExistence(checkForEmailExistenceInput: CheckForEmailExistenceInput!): CommonResponse!
   checkForNicknameExistence(checkForNicknameExistenceInput: CheckForNicknameExistenceInput!): CommonResponse!
   getFollowsByAgeStats: FollowsByAgeStatsResponse!
-  getFriendsPosts: [PostWithImagesAndLikesResponse!]!
+  getFriendsPosts(hashtagsInput: HashtagsInput!): [PostWithImagesAndLikesResponse!]!
+  getHashtags: [HashtagResponse!]!
   getPostsRecommendations: [PostWithImagesAndLikesResponse!]!
   getRecommendations: [UserResponse!]!
   getUserById: UserResponse!
   getUserPosts: [PostWithImagesAndLikesResponse!]!
+  getUsersStats: [UserStats!]!
+  getUsersWithTopFollows: [UserStats!]!
+  getUsersWithTopPosts: [UserStats!]!
   loginWithEmail(loginWithEmailInput: LoginWithEmailInput!): TokensResponse!
   refreshTokens: TokensResponse!
   searchUsers(searchUsersInput: SearchUsersInput!): [UserResponse!]!
@@ -156,16 +170,16 @@ type TokensResponse {
 }
 
 input UnfollowUserInput {
-  userId: String!
+  userId: Float!
 }
 
 input UnlikePostInput {
-  postId: String!
+  postId: Float!
 }
 
 input UpdatePostInput {
   caption: String!
-  id: String!
+  id: Float!
   location: String!
   photoLink: String!
 }
@@ -182,7 +196,7 @@ input UpdateUserInput {
 }
 
 type UserIdResponse {
-  userId: String!
+  userId: Float!
 }
 
 type UserResponse {
@@ -193,7 +207,7 @@ type UserResponse {
   firstName: String!
   followedBy: [FollowResponse!]!
   following: [FollowResponse!]!
-  id: String!
+  id: Float!
   lastName: String!
   nickname: String!
   passwordHash: String!
@@ -202,4 +216,14 @@ type UserResponse {
   refreshTokenHash: String!
   sex: String!
   updatedAt: DateTime!
+}
+
+type UserStats {
+  age: Float!
+  firstName: String!
+  followersNumber: Float!
+  followingNumber: Float!
+  id: Float!
+  lastName: String!
+  sex: String!
 }

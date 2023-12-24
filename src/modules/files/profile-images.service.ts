@@ -32,7 +32,7 @@ export class ProfileImagesService {
     private readonly prismaService: PrismaService,
   ) {}
 
-  async uploadImage(file: Express.Multer.File, ownerId: string) {
+  async uploadImage(file: Express.Multer.File, ownerId: number) {
     try {
       await this.deleteProfileImage(ownerId);
     } catch (e) {
@@ -96,7 +96,7 @@ export class ProfileImagesService {
     return this.retrieveImage(ownerId);
   }
 
-  async retrieveImage(ownerId: string): Promise<Image> {
+  async retrieveImage(ownerId: number): Promise<Image> {
     let user: User;
 
     try {
@@ -148,7 +148,7 @@ export class ProfileImagesService {
     };
   }
 
-  async deleteProfileImage(ownerId: string) {
+  async deleteProfileImage(ownerId: number) {
     let user: User | null;
 
     try {

@@ -4,10 +4,10 @@ import { Like } from '@prisma/client';
 @ObjectType()
 export class LikeResponse implements Partial<Like> {
   @Field()
-  userId: string;
+  userId: number;
 
   @Field()
-  postId: string;
+  postId: number;
 
   @Field()
   createdAt: Date;

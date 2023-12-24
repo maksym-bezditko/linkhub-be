@@ -15,14 +15,14 @@ export class FriendsResolver {
 
   @UseGuards(AtJwtGuard)
   @Query(() => [UserResponse])
-  getRecommendations(@UserIdFromJwt() userId: string) {
+  getRecommendations(@UserIdFromJwt() userId: number) {
     return this.friendsService.getRecommendations(userId);
   }
 
   @UseGuards(AtJwtGuard)
   @Mutation(() => CommonResponse)
   followUser(
-    @UserIdFromJwt() userId: string,
+    @UserIdFromJwt() userId: number,
     @Args('followUserInput') followUserInput: FollowUserInput,
   ) {
     return this.friendsService.followUser(followUserInput, userId);
@@ -31,7 +31,7 @@ export class FriendsResolver {
   @UseGuards(AtJwtGuard)
   @Mutation(() => CommonResponse)
   unfollowUser(
-    @UserIdFromJwt() userId: string,
+    @UserIdFromJwt() userId: number,
     @Args('unfollowUserInput') unlikePostInput: UnfollowUserInput,
   ) {
     return this.friendsService.unfollowUser(unlikePostInput, userId);

@@ -16,7 +16,7 @@ enum Sex {
 }
 
 model User {
-  id String @id @default(uuid()) @db.Uuid
+  id Int @id @default(autoincrement())
 
   email        String @unique @db.VarChar(100)
   passwordHash String @map("password_hash") @db.VarChar(500)
@@ -28,7 +28,7 @@ model User {
   lastName  String   @map("last_name") @db.VarChar(50)
   sex       Sex
   nickname  String   @unique @map("nickname") @db.VarChar(100)
-  birthday  DateTime @map("birthday") @default(now())
+  birthday  DateTime @default(now()) @map("birthday")
 
   profileImageName String? @unique @map("profile_image_name") @db.Uuid
 
@@ -47,7 +47,7 @@ model User {
 }
 
 model Settings {
-  id String @id @default(uuid()) @db.Uuid
+  id Int @id @default(autoincrement())
 
   darkThemeEnabled Boolean @map("dark_theme_enabled")
 
@@ -71,20 +71,20 @@ model Settings {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user   User?  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userId String @unique @map("user_id") @db.Uuid
+  user   User? @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId Int   @unique @map("user_id")
 
   @@map("settings")
 }
 
 model Post {
-  id String @id @default(uuid()) @db.Uuid
+  id Int @id @default(autoincrement())
 
   caption  String?
   location String? @db.VarChar(50)
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userId String @map("user_id") @db.Uuid
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId Int  @map("user_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -97,7 +97,7 @@ model Post {
 }
 
 model Hashtag {
-  id String @id @default(uuid()) @db.Uuid
+  id Int @id @default(autoincrement())
 
   postsOnHashtags PostsOnHashtags[]
 
@@ -107,11 +107,11 @@ model Hashtag {
 }
 
 model PostsOnHashtags {
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  postId String @db.Uuid
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  postId Int
 
   hashtag   Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  hashtagId String  @db.Uuid
+  hashtagId Int
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -121,28 +121,28 @@ model PostsOnHashtags {
 }
 
 model PostImage {
-  id String @id @default(uuid()) @db.Uuid
+  id Int @id @default(autoincrement())
 
   name String @unique @db.Uuid
 
-  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  ownerId String @db.Uuid
+  owner   User @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  ownerId Int
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  postId String @map("post_id") @db.Uuid
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  postId Int  @map("post_id")
 
   @@map("post_images")
 }
 
 model Like {
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  postId String @map("post_id") @db.Uuid
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  postId Int  @map("post_id")
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userId String @map("user_id") @db.Uuid
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId Int  @map("user_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -152,11 +152,11 @@ model Like {
 }
 
 model Follow {
-  following       User   @relation("FollowingUserRelation", fields: [followingUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  followingUserId String @db.Uuid
+  following       User @relation("FollowingUserRelation", fields: [followingUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  followingUserId Int
 
-  followedUser   User   @relation("FollowedUserRelation", fields: [followedUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  followedUserId String @db.Uuid
+  followedUser   User @relation("FollowedUserRelation", fields: [followedUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  followedUserId Int
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

@@ -19,6 +19,8 @@ import { LikePostInput } from 'src/graphql/inputs/like-post.input';
 import { UnlikePostInput } from 'src/graphql/inputs/unlike-post.input';
 import { PostOwnerResponse } from 'src/graphql/responses/post-owner.response';
 import { CommonResponse } from 'src/graphql/responses/common.response';
+import { HashtagResponse } from 'src/graphql/responses/hashtag.response';
+import { HashtagsInput } from 'src/graphql/inputs/hashtags.input';
 
 @Injectable()
 export class PostsService {
@@ -30,18 +32,36 @@ export class PostsService {
   ) {}
 
   async getFriendsPosts(
-    userId: string,
+    userId: number,
+    hashtagInput: HashtagsInput,
   ): Promise<PostWithImagesAndLikesResponse[]> {
     try {
       const posts = await this.prismaService.post.findMany({
         where: {
-          user: {
-            following: {
-              some: {
-                followingUserId: userId,
+          AND: [
+            {
+              user: {
+                following: {
+                  some: {
+                    followingUserId: userId,
+                  },
+                },
               },
             },
-          },
+            hashtagInput.tags.length > 0
+              ? {
+                  postsOnHashtags: {
+                    some: {
+                      hashtag: {
+                        name: {
+                          in: hashtagInput.tags,
+                        },
+                      },
+                    },
+                  },
+                }
+              : undefined,
+          ],
         },
         select: {
           id: true,
@@ -67,8 +87,16 @@ export class PostsService {
     }
   }
 
+  async getHashtags(): Promise<HashtagResponse[]> {
+    try {
+      return await this.prismaService.hashtag.findMany();
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
   async getPostsRecommendations(
-    userId: string,
+    userId: number,
   ): Promise<PostWithImagesAndLikesResponse[]> {
     try {
       const myHashtags = await this.prismaService.post.findMany({
@@ -136,7 +164,7 @@ export class PostsService {
   }
 
   async createPost(
-    userId: string,
+    userId: number,
     { hashtags, ...postData }: CreatePostInput,
   ): Promise<PostWithImagesAndLikesResponse> {
     try {
@@ -247,7 +275,7 @@ export class PostsService {
   }
 
   async getUserPosts(
-    userId: string,
+    userId: number,
   ): Promise<PostWithImagesAndLikesResponse[]> {
     const posts = await this.prismaService.post.findMany({
       where: {
@@ -274,7 +302,7 @@ export class PostsService {
     return await Promise.all(posts.map((post) => this.mapPostResponse(post)));
   }
 
-  async deletePost(postId: string, ownerId: string): Promise<CommonResponse> {
+  async deletePost(postId: number, ownerId: number): Promise<CommonResponse> {
     try {
       const post = await this.prismaService.post.findUnique({
         where: {
@@ -313,7 +341,7 @@ export class PostsService {
     });
   }
 
-  async likePost(likePostInput: LikePostInput, ownerId: string) {
+  async likePost(likePostInput: LikePostInput, ownerId: number) {
     try {
       await this.prismaService.like.create({
         data: {
@@ -330,7 +358,7 @@ export class PostsService {
     }
   }
 
-  async unlikePost(unlikePostInput: UnlikePostInput, ownerId: string) {
+  async unlikePost(unlikePostInput: UnlikePostInput, ownerId: number) {
     try {
       await this.prismaService.like.deleteMany({
         where: {

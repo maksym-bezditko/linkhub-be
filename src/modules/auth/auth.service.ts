@@ -8,7 +8,6 @@ import { UserIdResponse } from '../../graphql/responses/user-id.response';
 import { TokensResponse } from 'src/graphql/responses/tokens.response';
 import { GraphQLError } from 'graphql';
 import { LoginWithEmailInput } from '../../graphql/inputs/login-with-email.input';
-import { v4 as uuidv4 } from 'uuid';
 import { CreateUserInput } from '../../graphql/inputs/create-user.input';
 import { CheckForEmailExistenceInput } from '../../graphql/inputs/check-for-email-existence.input';
 import { CommonResponse } from 'src/graphql/responses/common.response';
@@ -41,8 +40,24 @@ export class AuthService {
     });
   }
 
+  async deleteAccount(userId: number) {
+    try {
+      await this.prismaService.user.delete({
+        where: {
+          id: userId,
+        },
+      });
+
+      return {
+        succeeded: true,
+      };
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
   async updateUser(
-    userId: string,
+    userId: number,
     updateUserInput: UpdateUserInput,
   ): Promise<CommonResponse> {
     const fieldToUpdate = {};
@@ -77,7 +92,7 @@ export class AuthService {
     }
   }
 
-  async getUserById(userId: string): Promise<UserResponse> {
+  async getUserById(userId: number): Promise<UserResponse> {
     let user: UserResponse;
 
     try {
@@ -120,7 +135,7 @@ export class AuthService {
   }
 
   async updateRefreshTokenHash(
-    userId: string,
+    userId: number,
     refreshTokenHash: string,
   ): Promise<Omit<User, 'passwordHash'>> {
     try {
@@ -141,7 +156,7 @@ export class AuthService {
     }
   }
 
-  async getTokens(email: string, userId: string) {
+  async getTokens(email: string, userId: number) {
     try {
       const [at, rt] = await Promise.all([
         this.jwtService.signAsync(
@@ -207,19 +222,11 @@ export class AuthService {
 
   async createUser(createUserInput: CreateUserInput) {
     try {
-      const userId = uuidv4();
-
-      const { accessToken, refreshToken } = await this.getTokens(
-        createUserInput.email,
-        userId,
-      );
-
-      await this.prismaService.user.create({
+      const user = await this.prismaService.user.create({
         data: {
-          id: userId,
           email: createUserInput.email,
           passwordHash: await this.hashData(createUserInput.password),
-          refreshTokenHash: await this.hashData(refreshToken),
+          refreshTokenHash: null,
           bio: createUserInput.bio,
           firstName: createUserInput.firstName,
           lastName: createUserInput.lastName,
@@ -244,6 +251,20 @@ export class AuthService {
               subscriptionNotificationsEnabled: true,
             },
           },
+        },
+      });
+
+      const { accessToken, refreshToken } = await this.getTokens(
+        createUserInput.email,
+        user.id,
+      );
+
+      await this.prismaService.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          refreshTokenHash: await this.hashData(refreshToken),
         },
       });
 
@@ -290,7 +311,7 @@ export class AuthService {
     }
   }
 
-  async logout(userId: string): Promise<UserIdResponse> {
+  async logout(userId: number): Promise<UserIdResponse> {
     try {
       await this.prismaService.user.update({
         where: {
@@ -307,7 +328,7 @@ export class AuthService {
     }
   }
 
-  async refreshToken(userId: string, refreshToken: string) {
+  async refreshToken(userId: number, refreshToken: string) {
     try {
       const user = await this.prismaService.user.findUnique({
         where: {

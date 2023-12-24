@@ -4,7 +4,7 @@ import { User } from '@prisma/client';
 @ObjectType()
 export class PostOwnerResponse implements Partial<User> {
   @Field()
-  id: string;
+  id: number;
 
   @Field()
   nickname: string;

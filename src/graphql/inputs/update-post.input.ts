@@ -4,7 +4,7 @@ import { Post as PostType } from '@prisma/client';
 @InputType()
 export class UpdatePostInput implements Partial<PostType> {
   @Field()
-  id: string;
+  id: number;
 
   @Field()
   photoLink: string;

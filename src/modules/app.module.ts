@@ -8,6 +8,7 @@ import { GraphQLFormattedError } from 'graphql';
 import { FilesModule } from './files/files.module';
 import { FriendsModule } from './friends/friends.module';
 import { StatsModule } from './stats/stats.module';
+import { Lab2Module } from './lab2/lab2.module';
 
 @Module({
   imports: [
@@ -35,6 +36,8 @@ import { StatsModule } from './stats/stats.module';
     FriendsModule,
 
     StatsModule,
+
+    Lab2Module,
   ],
 })
 export class AppModule {}

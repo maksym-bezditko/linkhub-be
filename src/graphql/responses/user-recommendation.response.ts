@@ -5,7 +5,7 @@ import { FollowResponse } from './follow.response';
 @ObjectType()
 export class UserRecommendationResponse implements Partial<User> {
   @Field()
-  id: string;
+  id: number;
 
   @Field()
   email: string;

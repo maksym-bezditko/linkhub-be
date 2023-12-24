@@ -29,14 +29,14 @@ export class AuthResolver {
   @Mutation(() => CommonResponse)
   updateUser(
     @Args('updateUserInput') updateUserInput: UpdateUserInput,
-    @UserIdFromJwt() userId: string,
+    @UserIdFromJwt() userId: number,
   ): Promise<CommonResponse> {
     return this.authService.updateUser(userId, updateUserInput);
   }
 
   @Query(() => UserResponse)
   @UseGuards(AtJwtGuard)
-  getUserById(@UserIdFromJwt() userId: string): Promise<UserResponse> {
+  getUserById(@UserIdFromJwt() userId: number): Promise<UserResponse> {
     return this.authService.getUserById(userId);
   }
 
@@ -76,7 +76,13 @@ export class AuthResolver {
 
   @UseGuards(AtJwtGuard)
   @Mutation(() => UserIdResponse)
-  logout(@UserIdFromJwt() userId: string) {
+  logout(@UserIdFromJwt() userId: number) {
     return this.authService.logout(userId);
+  }
+
+  @UseGuards(AtJwtGuard)
+  @Mutation(() => CommonResponse)
+  deleteAccount(@UserIdFromJwt() userId: number) {
+    return this.authService.deleteAccount(userId);
   }
 }

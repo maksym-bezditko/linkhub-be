@@ -29,7 +29,7 @@ export class PostImagesService {
     private readonly prismaService: PrismaService,
   ) {}
 
-  async checkImageBelongsToOwner(name: string, ownerId: string) {
+  async checkImageBelongsToOwner(name: string, ownerId: number) {
     let image: PostImage | null;
 
     try {
@@ -51,8 +51,8 @@ export class PostImagesService {
 
   async uploadImages(
     files: Express.Multer.File[],
-    ownerId: string,
-    postId: string,
+    ownerId: number,
+    postId: number,
   ) {
     const imageData: Image[] = [];
 
@@ -65,8 +65,8 @@ export class PostImagesService {
 
   async uploadImage(
     file: Express.Multer.File,
-    ownerId: string,
-    postId: string,
+    ownerId: number,
+    postId: number,
   ) {
     let formattedImageBuffer: Buffer;
 
@@ -122,7 +122,7 @@ export class PostImagesService {
     return this.retrieveImage(imageName, ownerId);
   }
 
-  async retrieveImage(name: string, ownerId: string): Promise<Image> {
+  async retrieveImage(name: string, ownerId: number): Promise<Image> {
     await this.checkImageBelongsToOwner(name, ownerId);
 
     let getCommand: GetObjectCommand;
@@ -154,7 +154,7 @@ export class PostImagesService {
     };
   }
 
-  async deleteImage(name: string, ownerId: string) {
+  async deleteImage(name: string, ownerId: number) {
     await this.checkImageBelongsToOwner(name, ownerId);
 
     let deleteCommand: DeleteObjectCommand;

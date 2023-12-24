@@ -7,7 +7,7 @@ import { PostOwnerResponse } from './post-owner.response';
 @ObjectType()
 export class PostWithImagesAndLikesResponse implements Partial<Post> {
   @Field()
-  id: string;
+  id: number;
 
   @Field(() => PostOwnerResponse)
   user: PostOwnerResponse;

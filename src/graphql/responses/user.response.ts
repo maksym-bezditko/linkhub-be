@@ -6,7 +6,7 @@ import { PostResponse } from './post.response';
 @ObjectType()
 export class UserResponse implements Partial<User> {
   @Field()
-  id: string;
+  id: number;
 
   @Field()
   email: string;

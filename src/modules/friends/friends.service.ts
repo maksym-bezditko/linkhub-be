@@ -11,7 +11,7 @@ import { SearchBy, SexFilter, SortBy } from 'src/models';
 export class FriendsService {
   constructor(private readonly prismaService: PrismaService) {}
 
-  async getRecommendations(userId: string): Promise<UserResponse[]> {
+  async getRecommendations(userId: number): Promise<UserResponse[]> {
     const userFriends = await this.prismaService.user.findMany({
       where: {
         following: {
@@ -64,7 +64,7 @@ export class FriendsService {
     return friendsOfFriends.filter((friend) => friend.id !== userId);
   }
 
-  async followUser(followUserInput: FollowUserInput, followingUserId: string) {
+  async followUser(followUserInput: FollowUserInput, followingUserId: number) {
     try {
       if (followUserInput.userId === followingUserId) {
         throw new Error('You cannot follow yourself');
@@ -87,7 +87,7 @@ export class FriendsService {
 
   async unfollowUser(
     unfollowUserInput: UnfollowUserInput,
-    followingUserId: string,
+    followingUserId: number,
   ) {
     try {
       if (unfollowUserInput.userId === followingUserId) {
