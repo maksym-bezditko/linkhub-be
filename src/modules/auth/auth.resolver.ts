@@ -1,73 +1,96 @@
-import { Args, Resolver, Query, Context, Mutation } from '@nestjs/graphql';
-import { TokensResponse } from 'src/graphql/responses/tokens.response';
-import { LoginWithEmailInput } from '../../graphql/inputs/login-with-email.input';
-import { UserIdResponse } from '../../graphql/responses/user-id.response';
+import {
+  Args,
+  Resolver,
+  Query,
+  Context,
+  Mutation,
+  ResolveField,
+  Parent,
+} from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { AtJwtGuard } from './guards/jwt-at.guard';
 import { RtJwtGuard } from './guards/jwt-rt.guard';
 import { AuthService } from './auth.service';
-import { CreateUserInput } from '../../graphql/inputs/create-user.input';
-import { CheckForEmailExistenceInput } from '../../graphql/inputs/check-for-email-existence.input';
-import { CommonResponse } from 'src/graphql/responses/common.response';
-import { CheckForNicknameExistenceInput } from 'src/graphql/inputs/check-for-nickname-existence.input';
+import {
+  CheckIfUserExistsByEmailInput,
+  CheckIfUserExistsByNicknameInput,
+  CreateUserInput,
+  LoginWithEmailInput,
+  SearchUsersInput,
+  UpdateUserInput,
+} from 'src/graphql/inputs';
 import { UserIdFromJwt } from 'src/decorators/user-id-from-jwt.decorator';
-import { UserResponse } from 'src/graphql/responses/user.response';
-import { UpdateUserInput } from 'src/graphql/inputs/update-user.input';
+import {
+  TokensResponse,
+  CommonResponse,
+  UserResponse,
+  UserIdResponse,
+  ExistsResponse,
+  PostResponse,
+} from 'src/graphql/responses';
+import { PostsService } from '../posts/posts.service';
+import { ImagesService } from '../files/images.service';
 
-@Resolver()
+@Resolver(() => UserResponse)
 export class AuthResolver {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly postsService: PostsService,
+    private readonly imagesService: ImagesService,
+  ) {}
 
   @Mutation(() => TokensResponse)
-  createUser(
+  async createUser(
     @Args('createUserInput') createUserInput: CreateUserInput,
   ): Promise<TokensResponse> {
     return this.authService.createUser(createUserInput);
   }
 
+  @Query(() => TokensResponse)
+  async loginWithEmail(
+    @Args('loginWithEmailInput') loginWithEmailInput: LoginWithEmailInput,
+  ): Promise<TokensResponse> {
+    return this.authService.loginWithEmail(loginWithEmailInput);
+  }
+
   @UseGuards(AtJwtGuard)
   @Mutation(() => CommonResponse)
-  updateUser(
+  async updateUser(
     @Args('updateUserInput') updateUserInput: UpdateUserInput,
     @UserIdFromJwt() userId: number,
   ): Promise<CommonResponse> {
     return this.authService.updateUser(userId, updateUserInput);
   }
 
-  @Query(() => UserResponse)
   @UseGuards(AtJwtGuard)
-  getUserById(@UserIdFromJwt() userId: number): Promise<UserResponse> {
+  @Query(() => UserResponse)
+  async getMyProfile(@UserIdFromJwt() userId: number) {
     return this.authService.getUserById(userId);
   }
 
-  @Query(() => TokensResponse)
-  loginWithEmail(
-    @Args('loginWithEmailInput') loginWithEmailInput: LoginWithEmailInput,
-  ): Promise<TokensResponse> {
-    return this.authService.loginWithEmail(loginWithEmailInput);
+  @Query(() => ExistsResponse)
+  async checkIfUserExistsByEmail(
+    @Args('checkIfUserExistsByEmailInput')
+    checkIfUserExistsByEmailInput: CheckIfUserExistsByEmailInput,
+  ): Promise<ExistsResponse> {
+    return this.authService.checkForEmailExistence(
+      checkIfUserExistsByEmailInput,
+    );
   }
 
-  @Query(() => CommonResponse)
-  checkForEmailExistence(
-    @Args('checkForEmailExistenceInput')
-    checkForEmailExistenceInput: CheckForEmailExistenceInput,
-  ): Promise<CommonResponse> {
-    return this.authService.checkForEmailExistence(checkForEmailExistenceInput);
-  }
-
-  @Query(() => CommonResponse)
-  checkForNicknameExistence(
-    @Args('checkForNicknameExistenceInput')
-    checkForUsernameExistenceInput: CheckForNicknameExistenceInput,
-  ): Promise<CommonResponse> {
+  @Query(() => ExistsResponse)
+  async checkIfUserExistsByNickname(
+    @Args('checkIfUserExistsByNicknameInput')
+    checkIfUserExistsByNicknameInput: CheckIfUserExistsByNicknameInput,
+  ): Promise<ExistsResponse> {
     return this.authService.checkForNicknameExistence(
-      checkForUsernameExistenceInput,
+      checkIfUserExistsByNicknameInput,
     );
   }
 
   @UseGuards(RtJwtGuard)
   @Query(() => TokensResponse)
-  refreshTokens(@Context() context: any) {
+  async refreshTokens(@Context() context: any) {
     return this.authService.refreshToken(
       context.req.user.userId,
       context.req.headers.authorization.replace('Bearer ', ''),
@@ -76,13 +99,54 @@ export class AuthResolver {
 
   @UseGuards(AtJwtGuard)
   @Mutation(() => UserIdResponse)
-  logout(@UserIdFromJwt() userId: number) {
+  async logout(@UserIdFromJwt() userId: number) {
     return this.authService.logout(userId);
   }
 
   @UseGuards(AtJwtGuard)
   @Mutation(() => CommonResponse)
-  deleteAccount(@UserIdFromJwt() userId: number) {
+  async deleteAccount(@UserIdFromJwt() userId: number) {
     return this.authService.deleteAccount(userId);
+  }
+
+  @Query(() => [UserResponse])
+  async searchUsers(
+    @Args('searchUsersInput') searchUsersInput: SearchUsersInput,
+  ) {
+    return this.authService.searchUsers(searchUsersInput);
+  }
+
+  @ResolveField('posts', () => [PostResponse])
+  async posts(@Parent() user: UserResponse) {
+    const { id } = user;
+
+    return this.postsService.getUserPosts(id);
+  }
+
+  @ResolveField('followers', () => [PostResponse])
+  async followers(@Parent() user: UserResponse) {
+    const { id } = user;
+
+    return this.authService.getUserFollowers(id);
+  }
+
+  @ResolveField('following', () => [PostResponse])
+  async following(@Parent() user: UserResponse) {
+    const { id } = user;
+
+    return this.authService.getUserFollowings(id);
+  }
+
+  @ResolveField('profileImage', () => String, { nullable: true })
+  async profileImage(@Parent() user: UserResponse) {
+    const { profileImageName } = user;
+
+    if (!profileImageName) {
+      return null;
+    }
+
+    const { url } = await this.imagesService.getImageUrl(profileImageName);
+
+    return url;
   }
 }

@@ -1,57 +1,137 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '@prisma/client';
 import { hash, verify } from 'argon2';
 import { PrismaService } from 'src/modules/database/prisma.service';
-import { UserIdResponse } from '../../graphql/responses/user-id.response';
-import { TokensResponse } from 'src/graphql/responses/tokens.response';
 import { GraphQLError } from 'graphql';
-import { LoginWithEmailInput } from '../../graphql/inputs/login-with-email.input';
-import { CreateUserInput } from '../../graphql/inputs/create-user.input';
-import { CheckForEmailExistenceInput } from '../../graphql/inputs/check-for-email-existence.input';
-import { CommonResponse } from 'src/graphql/responses/common.response';
-import { CheckForNicknameExistenceInput } from 'src/graphql/inputs/check-for-nickname-existence.input';
-import { UserResponse } from 'src/graphql/responses/user.response';
-import { UpdateUserInput } from 'src/graphql/inputs/update-user.input';
+import {
+  UpdateUserInput,
+  LoginWithEmailInput,
+  CreateUserInput,
+  SearchUsersInput,
+  CheckIfUserExistsByEmailInput,
+  CheckIfUserExistsByNicknameInput,
+} from 'src/graphql/inputs';
+import {
+  CommonResponse,
+  TokensResponse,
+  UserIdResponse,
+  ExistsResponse,
+} from 'src/graphql/responses';
+import { SearchBy, SexFilter, SortBy } from 'src/models';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
+  private readonly logger: Logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
 
-  async hashData(data: string) {
-    return await hash(data);
-  }
-
-  async allUsers() {
-    return this.prismaService.user.findMany({
-      include: {
-        followedBy: true,
-        following: true,
-        likes: true,
-        postImages: true,
-        posts: true,
-        settings: true,
-      },
-    });
-  }
-
-  async deleteAccount(userId: number) {
+  async createUser(createUserInput: CreateUserInput) {
     try {
-      await this.prismaService.user.delete({
-        where: {
-          id: userId,
+      const user = await this.prismaService.user.create({
+        data: {
+          email: createUserInput.email,
+          passwordHash: await hash(createUserInput.password),
+          refreshTokenHash: null,
+          bio: createUserInput.bio,
+          firstName: createUserInput.firstName,
+          lastName: createUserInput.lastName,
+          birthday: createUserInput.birthday,
+          nickname: createUserInput.nickname,
+          sex: createUserInput.sex,
+          profileImageName: null,
+          settings: {
+            create: {
+              darkThemeEnabled: false,
+              backupEnabled: false,
+              commentNotificationsEnabled: true,
+              friendRequestNotificationsEnabled: true,
+              likeNotificationsEnabled: true,
+              likesVisibilityEnabled: true,
+              messageNotificationsEnabled: true,
+              peopleRecommendationsEnabled: true,
+              privateAccountEnabled: false,
+              sensitiveContentAllowed: false,
+              spamBlockEnabled: true,
+              strangerMessagesEnabled: true,
+              subscriptionNotificationsEnabled: true,
+            },
+          },
         },
       });
 
+      this.logger.log(`Created user with id: ${user.id}`);
+
+      const { accessToken, refreshToken } = await this.getTokens(
+        createUserInput.email,
+        user.id,
+      );
+
+      this.logger.log(`Created tokens for user with id: ${user.id}`);
+
+      await this.prismaService.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          refreshTokenHash: await hash(refreshToken),
+        },
+      });
+
+      this.logger.log(`Updated user refresh token with id: ${user.id}`);
+
       return {
-        succeeded: true,
+        accessToken,
+        refreshToken,
       };
-    } catch (e) {
+    } catch (e: any) {
+      this.logger.error(e.message);
+
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async loginWithEmail(loginDto: LoginWithEmailInput): Promise<TokensResponse> {
+    try {
+      const user = await this.prismaService.user.findUnique({
+        where: {
+          email: loginDto.email,
+        },
+      });
+
+      if (!user || !(await verify(user.passwordHash, loginDto.password)))
+        throw new UnauthorizedException();
+
+      this.logger.log(`Found user with email: ${loginDto.email}`);
+
+      const { accessToken, refreshToken } = await this.getTokens(
+        user.email,
+        user.id,
+      );
+
+      this.logger.log(`Created tokens for user with id: ${user.id}`);
+
+      await this.updateRefreshTokenHash(user.id, await hash(refreshToken));
+
+      this.logger.log(`Updated user refresh token with id: ${user.id}`);
+
+      return {
+        accessToken,
+        refreshToken,
+      };
+    } catch (e: any) {
+      this.logger.error(e.message);
+
       throw new GraphQLError(e.message);
     }
   }
@@ -66,7 +146,7 @@ export class AuthService {
       if (!value) {
         continue;
       } else if (key === 'password') {
-        const passwordHash = await this.hashData(value);
+        const passwordHash = await hash(value);
 
         fieldToUpdate['passwordHash'] = passwordHash;
       } else {
@@ -84,6 +164,8 @@ export class AuthService {
         },
       });
 
+      this.logger.log(`Updated user with id: ${userId}`);
+
       return {
         succeeded: true,
       };
@@ -92,52 +174,287 @@ export class AuthService {
     }
   }
 
-  async getUserById(userId: number): Promise<UserResponse> {
-    let user: UserResponse;
-
+  async getUserById(userId: number) {
     try {
-      user = await this.prismaService.user.findUnique({
+      const result = await this.prismaService.user.findUnique({
         where: {
           id: userId,
         },
-        include: {
-          followedBy: true,
-          following: true,
-          posts: {
-            select: {
-              id: true,
-              caption: true,
-              location: true,
-              postImages: true,
-              likes: true,
-              userId: false,
-              user: {
-                select: {
-                  id: true,
-                  nickname: true,
-                },
-              },
-              createdAt: true,
-              updatedAt: true,
-            },
-          },
-        },
       });
 
-      if (!user) {
+      if (!result) {
         throw new UnauthorizedException('User not found');
       }
 
-      return user;
+      this.logger.log(`Found user with id: ${userId}`);
+
+      return result;
     } catch (e) {
       throw new GraphQLError(e.message);
     }
   }
 
+  async getAllUsers() {
+    try {
+      this.logger.log('Fetching all users...');
+
+      return this.prismaService.user.findMany();
+    } catch (e) {
+      this.logger.error(e.message);
+
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async checkForEmailExistence(
+    checkIfUserExistsByEmailInput: CheckIfUserExistsByEmailInput,
+  ): Promise<ExistsResponse> {
+    try {
+      const user = await this.prismaService.user.findUnique({
+        where: { email: checkIfUserExistsByEmailInput.email },
+      });
+
+      if (Boolean(user)) {
+        this.logger.log(
+          `Found user with email: ${checkIfUserExistsByEmailInput.email}`,
+        );
+      } else {
+        this.logger.log(
+          `No user found with email: ${checkIfUserExistsByEmailInput.email}`,
+        );
+      }
+
+      return { exists: Boolean(user) };
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async checkForNicknameExistence(
+    checkIfUserExistsByNicknameInput: CheckIfUserExistsByNicknameInput,
+  ): Promise<ExistsResponse> {
+    try {
+      const user = await this.prismaService.user.findFirst({
+        where: {
+          nickname: checkIfUserExistsByNicknameInput.nickname,
+        },
+      });
+
+      if (Boolean(user)) {
+        this.logger.log(
+          `Found user with nickname: ${checkIfUserExistsByNicknameInput.nickname}`,
+        );
+      } else {
+        this.logger.log(
+          `No user found with nickname: ${checkIfUserExistsByNicknameInput.nickname}`,
+        );
+      }
+
+      return { exists: Boolean(user) };
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async refreshToken(userId: number, refreshToken: string) {
+    try {
+      const user = await this.prismaService.user.findUnique({
+        where: {
+          id: userId,
+        },
+      });
+
+      if (
+        !user ||
+        !user.refreshTokenHash ||
+        !(await verify(user.refreshTokenHash, refreshToken))
+      )
+        throw new UnauthorizedException();
+
+      this.logger.log(
+        `Found user with id: ${userId} and refresh token is valid`,
+      );
+
+      const { accessToken, refreshToken: newRefreshToken } =
+        await this.getTokens(user.email, user.id);
+
+      this.logger.log(`Created new tokens for user with id: ${user.id}`);
+
+      await this.updateRefreshTokenHash(user.id, await hash(refreshToken));
+
+      this.logger.log(`Updated user refresh token with id: ${user.id}`);
+
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+      };
+    } catch (e: any) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async logout(userId: number): Promise<UserIdResponse> {
+    try {
+      await this.prismaService.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          refreshTokenHash: null,
+        },
+      });
+
+      this.logger.log(`Removed user refresh token with id: ${userId}`);
+
+      return { userId };
+    } catch (e: any) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async deleteAccount(userId: number) {
+    try {
+      await this.prismaService.user.delete({
+        where: {
+          id: userId,
+        },
+      });
+
+      this.logger.log(`Deleted user with id: ${userId}`);
+
+      return {
+        succeeded: true,
+      };
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async getUserFollowers(userId: number) {
+    try {
+      this.logger.log(`Fetching user followers with id: ${userId}`);
+
+      return this.prismaService.user.findMany({
+        where: {
+          followedBy: {
+            some: {
+              followedUserId: userId,
+            },
+          },
+        },
+      });
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async getUserFollowings(userId: number) {
+    try {
+      this.logger.log(`Fetching user followings with id: ${userId}`);
+
+      return await this.prismaService.user.findMany({
+        where: {
+          following: {
+            some: {
+              followingUserId: userId,
+            },
+          },
+        },
+      });
+    } catch (e) {
+      throw new GraphQLError(e.message);
+    }
+  }
+
+  async searchUsers(searchUsersInput: SearchUsersInput) {
+    try {
+      const searchConditions = this.buildSearchConditions(searchUsersInput);
+      const orderBy = this.buildOrderBy(searchUsersInput);
+
+      const users = await this.prismaService.user.findMany({
+        where: searchConditions,
+        orderBy,
+      });
+
+      return users;
+    } catch (error) {
+      throw new GraphQLError(error.message);
+    }
+  }
+
+  private buildSearchConditions(
+    input: SearchUsersInput,
+  ): Prisma.UserWhereInput {
+    const searchByText = input.searchText.split(' ');
+    const searchByFullName = input.searchBy === SearchBy.FULLNAME;
+
+    const whereConditions: Prisma.UserWhereInput[] = [
+      searchByFullName
+        ? {
+            AND: [
+              {
+                firstName: {
+                  contains: searchByText[0],
+                },
+              },
+              {
+                lastName: {
+                  contains: searchByText[1],
+                },
+              },
+            ],
+          }
+        : {
+            nickname: {
+              contains: input.searchText,
+            },
+          },
+    ];
+
+    if (input.withPostsOnly) {
+      whereConditions.push({
+        NOT: {
+          posts: {
+            none: {},
+          },
+        },
+      });
+    }
+
+    if (input.sex !== SexFilter.ALL) {
+      whereConditions.push({
+        sex: input.sex === SexFilter.MALES ? 'MALE' : 'FEMALE',
+      });
+    }
+
+    return {
+      AND: whereConditions,
+    };
+  }
+
+  private buildOrderBy(
+    input: SearchUsersInput,
+  ): Prisma.UserOrderByWithRelationInput[] {
+    return input.sortBy === SortBy.FULLNAME
+      ? [
+          {
+            firstName: 'asc',
+          },
+          {
+            lastName: 'asc',
+          },
+        ]
+      : [
+          {
+            createdAt: 'desc',
+          },
+        ];
+  }
+
   async updateRefreshTokenHash(
     userId: number,
     refreshTokenHash: string,
-  ): Promise<Omit<User, 'passwordHash'>> {
+  ): Promise<void> {
     try {
       const user = await this.prismaService.user.update({
         where: {
@@ -148,9 +465,9 @@ export class AuthService {
         },
       });
 
-      delete user['passwordHash'];
-
-      return user;
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
     } catch (e) {
       throw new GraphQLError(e.message);
     }
@@ -184,181 +501,6 @@ export class AuthService {
       return {
         accessToken: at,
         refreshToken: rt,
-      };
-    } catch (e: any) {
-      throw new GraphQLError(e.message);
-    }
-  }
-
-  async loginWithEmail(loginDto: LoginWithEmailInput): Promise<TokensResponse> {
-    try {
-      const user = await this.prismaService.user.findUnique({
-        where: {
-          email: loginDto.email,
-        },
-      });
-
-      if (!user || !(await verify(user.passwordHash, loginDto.password)))
-        throw new UnauthorizedException();
-
-      const { accessToken, refreshToken } = await this.getTokens(
-        user.email,
-        user.id,
-      );
-
-      await this.updateRefreshTokenHash(
-        user.id,
-        await this.hashData(refreshToken),
-      );
-
-      return {
-        accessToken,
-        refreshToken,
-      };
-    } catch (e: any) {
-      throw new GraphQLError(e.message);
-    }
-  }
-
-  async createUser(createUserInput: CreateUserInput) {
-    try {
-      const user = await this.prismaService.user.create({
-        data: {
-          email: createUserInput.email,
-          passwordHash: await this.hashData(createUserInput.password),
-          refreshTokenHash: null,
-          bio: createUserInput.bio,
-          firstName: createUserInput.firstName,
-          lastName: createUserInput.lastName,
-          birthday: createUserInput.birthday,
-          nickname: createUserInput.nickname,
-          sex: createUserInput.sex,
-          profileImageName: null,
-          settings: {
-            create: {
-              darkThemeEnabled: false,
-              backupEnabled: false,
-              commentNotificationsEnabled: true,
-              friendRequestNotificationsEnabled: true,
-              likeNotificationsEnabled: true,
-              likesVisibilityEnabled: true,
-              messageNotificationsEnabled: true,
-              peopleRecommendationsEnabled: true,
-              privateAccountEnabled: false,
-              sensitiveContentAllowed: false,
-              spamBlockEnabled: true,
-              strangerMessagesEnabled: true,
-              subscriptionNotificationsEnabled: true,
-            },
-          },
-        },
-      });
-
-      const { accessToken, refreshToken } = await this.getTokens(
-        createUserInput.email,
-        user.id,
-      );
-
-      await this.prismaService.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          refreshTokenHash: await this.hashData(refreshToken),
-        },
-      });
-
-      return {
-        accessToken,
-        refreshToken,
-      };
-    } catch (e: any) {
-      throw new GraphQLError(e.message);
-    }
-  }
-
-  async checkForEmailExistence(
-    checkForEmailExistenceInput: CheckForEmailExistenceInput,
-  ): Promise<CommonResponse> {
-    try {
-      const user = await this.prismaService.user.findUnique({
-        where: { email: checkForEmailExistenceInput.email },
-      });
-
-      if (user) throw new Error('User already exists');
-
-      return { succeeded: true };
-    } catch (e) {
-      throw new GraphQLError(e.message);
-    }
-  }
-
-  async checkForNicknameExistence(
-    checkForUsernameExistenceInput: CheckForNicknameExistenceInput,
-  ): Promise<CommonResponse> {
-    try {
-      const user = await this.prismaService.user.findFirst({
-        where: {
-          nickname: checkForUsernameExistenceInput.nickname,
-        },
-      });
-
-      if (user) throw new Error('User already exists');
-
-      return { succeeded: true };
-    } catch (e) {
-      throw new GraphQLError(e.message);
-    }
-  }
-
-  async logout(userId: number): Promise<UserIdResponse> {
-    try {
-      await this.prismaService.user.update({
-        where: {
-          id: userId,
-        },
-        data: {
-          refreshTokenHash: null,
-        },
-      });
-
-      return { userId };
-    } catch (e: any) {
-      throw new GraphQLError(e.message);
-    }
-  }
-
-  async refreshToken(userId: number, refreshToken: string) {
-    try {
-      const user = await this.prismaService.user.findUnique({
-        where: {
-          id: userId,
-        },
-        select: {
-          id: true,
-          refreshTokenHash: true,
-          email: true,
-        },
-      });
-
-      if (
-        !user ||
-        !user.refreshTokenHash ||
-        !(await verify(user.refreshTokenHash, refreshToken))
-      )
-        throw new UnauthorizedException();
-
-      const { accessToken, refreshToken: newRefreshToken } =
-        await this.getTokens(user.email, user.id);
-
-      await this.updateRefreshTokenHash(
-        user.id,
-        await this.hashData(refreshToken),
-      );
-
-      return {
-        accessToken,
-        refreshToken: newRefreshToken,
       };
     } catch (e: any) {
       throw new GraphQLError(e.message);
