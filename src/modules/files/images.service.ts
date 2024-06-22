@@ -57,6 +57,7 @@ export class ImagesService {
     try {
       const formattedImageBuffer = await sharp(file.buffer)
         .resize(resizeOptions)
+        .webp({ quality: 30, lossless: true })
         .toBuffer();
 
       const putCommand = new PutObjectCommand({

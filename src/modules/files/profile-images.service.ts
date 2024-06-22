@@ -27,10 +27,6 @@ export class ProfileImagesService {
       this.logger.log('Deleted old profile image for user with id: ' + ownerId);
     } catch (e) {
       this.logger.error('Failed to delete old profile image' + e.message);
-
-      throw new InternalServerErrorException(
-        'Failed to delete old profile image: ' + e.message,
-      );
     }
 
     try {

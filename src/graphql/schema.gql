@@ -2,14 +2,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-input CheckIfUserExistsByEmailInput {
-  email: String!
-}
-
-input CheckIfUserExistsByNicknameInput {
-  nickname: String!
-}
-
 type CommonResponse {
   succeeded: Boolean!
 }
@@ -61,11 +53,6 @@ type LikeResponse {
   userId: Float!
 }
 
-input LoginWithEmailInput {
-  email: String!
-  password: String!
-}
-
 type Mutation {
   createPost(createPostInput: CreatePostInput!): PostResponse!
   createUser(createUserInput: CreateUserInput!): TokensResponse!
@@ -88,18 +75,19 @@ type PostResponse {
   likes: [LikeResponse!]!
   location: String
   owner: UserResponse!
+  postImage: String
   updatedAt: DateTime!
   userId: Float!
 }
 
 type Query {
-  checkIfUserExistsByEmail(checkIfUserExistsByEmailInput: CheckIfUserExistsByEmailInput!): ExistsResponse!
-  checkIfUserExistsByNickname(checkIfUserExistsByNicknameInput: CheckIfUserExistsByNicknameInput!): ExistsResponse!
+  checkIfUserExistsByEmail(email: String!): ExistsResponse!
+  checkIfUserExistsByNickname(nickname: String!): ExistsResponse!
   getFollowingsPosts: [PostResponse!]!
   getMyPosts: [PostResponse!]!
   getMyProfile: UserResponse!
   getPostsRecommendations: [PostResponse!]!
-  loginWithEmail(loginWithEmailInput: LoginWithEmailInput!): TokensResponse!
+  loginWithEmail(email: String!, password: String!): TokensResponse!
   refreshTokens: TokensResponse!
   searchUsers(searchUsersInput: SearchUsersInput!): [UserResponse!]!
 }

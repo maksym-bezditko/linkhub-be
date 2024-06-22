@@ -25,6 +25,7 @@ import {
 import { AuthService } from '../auth/auth.service';
 import { HashtagsService } from '../hashtags/hashtags.service';
 import { LikesService } from '../likes/likes.service';
+import { ImagesService } from '../files/images.service';
 
 @Resolver(() => PostResponse)
 export class PostsResolver {
@@ -33,6 +34,7 @@ export class PostsResolver {
     private readonly authService: AuthService,
     private readonly hashtagsService: HashtagsService,
     private readonly likesService: LikesService,
+    private readonly imagesService: ImagesService,
   ) {}
 
   @UseGuards(AtJwtGuard)
@@ -95,5 +97,20 @@ export class PostsResolver {
     const { id } = post;
 
     return this.likesService.getPostLikes(id);
+  }
+
+  @ResolveField('postImage', () => String, { nullable: true })
+  async profileImage(@Parent() post: PostResponse) {
+    const { id } = post;
+
+    const imageName = await this.postsService.getPostImageNameBePostId(id);
+
+    if (!imageName) {
+      return null;
+    }
+
+    const { url } = await this.imagesService.getImageUrl(imageName);
+
+    return url;
   }
 }

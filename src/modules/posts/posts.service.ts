@@ -28,6 +28,26 @@ export class PostsService {
     }
   }
 
+  async getPostImageNameBePostId(postId: number) {
+    try {
+      const image = await this.prismaService.postImage.findFirst({
+        where: {
+          postId,
+        },
+      });
+
+      if (!image) {
+        this.logger.log(`Couldn't find an image for post with id: ${postId}`);
+
+        return null;
+      }
+
+      this.logger.log(`Found an image for post with id: ${postId}`);
+
+      return image?.name || null;
+    } catch (e) {}
+  }
+
   async getAllUserPosts(userId: number) {
     try {
       const posts = await this.prismaService.post.findMany({

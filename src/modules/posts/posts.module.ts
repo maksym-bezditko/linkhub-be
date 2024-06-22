@@ -13,6 +13,7 @@ import { LikesModule } from '../likes/likes.module';
     FilesModule,
     HashtagsModule,
     LikesModule,
+    FilesModule,
     forwardRef(() => AuthModule),
   ],
   providers: [PostsResolver, PostsService],

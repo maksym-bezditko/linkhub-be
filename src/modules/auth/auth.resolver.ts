@@ -12,10 +12,7 @@ import { AtJwtGuard } from './guards/jwt-at.guard';
 import { RtJwtGuard } from './guards/jwt-rt.guard';
 import { AuthService } from './auth.service';
 import {
-  CheckIfUserExistsByEmailInput,
-  CheckIfUserExistsByNicknameInput,
   CreateUserInput,
-  LoginWithEmailInput,
   SearchUsersInput,
   UpdateUserInput,
 } from 'src/graphql/inputs';
@@ -48,9 +45,10 @@ export class AuthResolver {
 
   @Query(() => TokensResponse)
   async loginWithEmail(
-    @Args('loginWithEmailInput') loginWithEmailInput: LoginWithEmailInput,
+    @Args('email') email: string,
+    @Args('password') password: string,
   ): Promise<TokensResponse> {
-    return this.authService.loginWithEmail(loginWithEmailInput);
+    return this.authService.loginWithEmail(email, password);
   }
 
   @UseGuards(AtJwtGuard)
@@ -70,22 +68,18 @@ export class AuthResolver {
 
   @Query(() => ExistsResponse)
   async checkIfUserExistsByEmail(
-    @Args('checkIfUserExistsByEmailInput')
-    checkIfUserExistsByEmailInput: CheckIfUserExistsByEmailInput,
+    @Args('email')
+    email: string,
   ): Promise<ExistsResponse> {
-    return this.authService.checkForEmailExistence(
-      checkIfUserExistsByEmailInput,
-    );
+    return this.authService.checkForEmailExistence(email);
   }
 
   @Query(() => ExistsResponse)
   async checkIfUserExistsByNickname(
-    @Args('checkIfUserExistsByNicknameInput')
-    checkIfUserExistsByNicknameInput: CheckIfUserExistsByNicknameInput,
+    @Args('nickname')
+    nickname: string,
   ): Promise<ExistsResponse> {
-    return this.authService.checkForNicknameExistence(
-      checkIfUserExistsByNicknameInput,
-    );
+    return this.authService.checkForNicknameExistence(nickname);
   }
 
   @UseGuards(RtJwtGuard)

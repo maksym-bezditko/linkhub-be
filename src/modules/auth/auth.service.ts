@@ -11,11 +11,8 @@ import { PrismaService } from 'src/modules/database/prisma.service';
 import { GraphQLError } from 'graphql';
 import {
   UpdateUserInput,
-  LoginWithEmailInput,
   CreateUserInput,
   SearchUsersInput,
-  CheckIfUserExistsByEmailInput,
-  CheckIfUserExistsByNicknameInput,
 } from 'src/graphql/inputs';
 import {
   CommonResponse,
@@ -101,18 +98,21 @@ export class AuthService {
     }
   }
 
-  async loginWithEmail(loginDto: LoginWithEmailInput): Promise<TokensResponse> {
+  async loginWithEmail(
+    email: string,
+    password: string,
+  ): Promise<TokensResponse> {
     try {
       const user = await this.prismaService.user.findUnique({
         where: {
-          email: loginDto.email,
+          email,
         },
       });
 
-      if (!user || !(await verify(user.passwordHash, loginDto.password)))
+      if (!user || !(await verify(user.passwordHash, password)))
         throw new UnauthorizedException();
 
-      this.logger.log(`Found user with email: ${loginDto.email}`);
+      this.logger.log(`Found user with email: ${email}`);
 
       const { accessToken, refreshToken } = await this.getTokens(
         user.email,
@@ -206,22 +206,16 @@ export class AuthService {
     }
   }
 
-  async checkForEmailExistence(
-    checkIfUserExistsByEmailInput: CheckIfUserExistsByEmailInput,
-  ): Promise<ExistsResponse> {
+  async checkForEmailExistence(email: string): Promise<ExistsResponse> {
     try {
       const user = await this.prismaService.user.findUnique({
-        where: { email: checkIfUserExistsByEmailInput.email },
+        where: { email },
       });
 
       if (Boolean(user)) {
-        this.logger.log(
-          `Found user with email: ${checkIfUserExistsByEmailInput.email}`,
-        );
+        this.logger.log(`Found user with email: ${email}`);
       } else {
-        this.logger.log(
-          `No user found with email: ${checkIfUserExistsByEmailInput.email}`,
-        );
+        this.logger.log(`No user found with email: ${email}`);
       }
 
       return { exists: Boolean(user) };
@@ -230,24 +224,18 @@ export class AuthService {
     }
   }
 
-  async checkForNicknameExistence(
-    checkIfUserExistsByNicknameInput: CheckIfUserExistsByNicknameInput,
-  ): Promise<ExistsResponse> {
+  async checkForNicknameExistence(nickname: string): Promise<ExistsResponse> {
     try {
       const user = await this.prismaService.user.findFirst({
         where: {
-          nickname: checkIfUserExistsByNicknameInput.nickname,
+          nickname: nickname,
         },
       });
 
       if (Boolean(user)) {
-        this.logger.log(
-          `Found user with nickname: ${checkIfUserExistsByNicknameInput.nickname}`,
-        );
+        this.logger.log(`Found user with nickname: ${nickname}`);
       } else {
-        this.logger.log(
-          `No user found with nickname: ${checkIfUserExistsByNicknameInput.nickname}`,
-        );
+        this.logger.log(`No user found with nickname: ${nickname}`);
       }
 
       return { exists: Boolean(user) };
@@ -484,6 +472,7 @@ export class AuthService {
           {
             secret: this.configService.get('AT_SECRET'),
             expiresIn: '1h',
+            algorithm: 'HS256',
           },
         ),
         this.jwtService.signAsync(
@@ -494,6 +483,7 @@ export class AuthService {
           {
             secret: this.configService.get('RT_SECRET'),
             expiresIn: '30d',
+            algorithm: 'HS256',
           },
         ),
       ]);
