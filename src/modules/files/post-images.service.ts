@@ -1,52 +1,40 @@
 import {
-  DeleteObjectCommand,
-  GetObjectCommand,
-  S3Client,
-} from '@aws-sdk/client-s3';
-import {
-  Inject,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { CUSTOM_PROVIDERS_NAMES, POST_IMAGE_RESIZE_OPTIONS } from 'src/models';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { ConfigService } from '@nestjs/config';
-import { v4 as uuid } from 'uuid';
-import * as sharp from 'sharp';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PrismaService } from '../database/prisma.service';
-import { PostImage } from '@prisma/client';
-import { Image } from 'src/models';
+import { Image, POST_IMAGE_RESIZE_OPTIONS } from 'src/models';
+import { ImagesService } from './images.service';
+import { v4 as uuid } from 'uuid';
 
 @Injectable()
 export class PostImagesService {
+  private readonly logger = new Logger(PostImagesService.name);
+
   constructor(
-    @Inject(CUSTOM_PROVIDERS_NAMES.S3_CLIENT)
-    private readonly s3Client: S3Client,
-    private readonly configService: ConfigService,
     private readonly prismaService: PrismaService,
+    private readonly imagesService: ImagesService,
   ) {}
 
   async checkImageBelongsToOwner(name: string, ownerId: number) {
-    let image: PostImage | null;
-
     try {
-      image = await this.prismaService.postImage.findUnique({
+      const image = await this.prismaService.postImage.findUnique({
         where: {
           name,
         },
       });
+
+      if (!image) throw new NotFoundException();
+
+      if (image.ownerId !== ownerId) throw new UnauthorizedException();
     } catch (e) {
       throw new InternalServerErrorException(
         'Failed to check for image ownership: ' + e.message,
       );
     }
-
-    if (!image) throw new NotFoundException();
-
-    if (image.ownerId !== ownerId) throw new UnauthorizedException();
   }
 
   async uploadImages(
@@ -57,7 +45,9 @@ export class PostImagesService {
     const imageData: Image[] = [];
 
     for (const file of files) {
-      imageData.push(await this.uploadImage(file, ownerId, postId));
+      const uploadResult = await this.uploadImage(file, ownerId, postId);
+
+      imageData.push(uploadResult);
     }
 
     return imageData;
@@ -68,44 +58,17 @@ export class PostImagesService {
     ownerId: number,
     postId: number,
   ) {
-    let formattedImageBuffer: Buffer;
-
     try {
-      formattedImageBuffer = await sharp(file.buffer)
-        .resize(POST_IMAGE_RESIZE_OPTIONS)
-        .toBuffer();
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to resize image: ' + e.message,
+      const imageName = uuid();
+
+      await this.imagesService.putImage(
+        file,
+        POST_IMAGE_RESIZE_OPTIONS,
+        imageName,
       );
-    }
 
-    const imageName = uuid();
+      this.logger.log('Uploaded image for post with id: ' + postId);
 
-    let putCommand: PutObjectCommand;
-
-    try {
-      putCommand = new PutObjectCommand({
-        Bucket: this.configService.get('S3_BUCKET_NAME'),
-        Key: imageName,
-        Body: formattedImageBuffer,
-        ContentType: file.mimetype,
-      });
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to create a PUT command: ' + e.message,
-      );
-    }
-
-    try {
-      await this.s3Client.send(putCommand);
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to execute a PUT command: ' + e.message,
-      );
-    }
-
-    try {
       await this.prismaService.postImage.create({
         data: {
           name: imageName,
@@ -113,80 +76,53 @@ export class PostImagesService {
           postId,
         },
       });
+
+      this.logger.log('Created image for post with id: ' + postId);
+
+      return this.retrieveImage(imageName, ownerId);
     } catch (e) {
+      this.logger.error('Failed to upload image: ' + e.message);
+
       throw new InternalServerErrorException(
-        'Failed to upload image to Prisma: ' + e.message,
+        'Failed to upload image: ' + e.message,
       );
     }
-
-    return this.retrieveImage(imageName, ownerId);
   }
 
   async retrieveImage(name: string, ownerId: number): Promise<Image> {
-    await this.checkImageBelongsToOwner(name, ownerId);
-
-    let getCommand: GetObjectCommand;
-
     try {
-      getCommand = new GetObjectCommand({
-        Bucket: this.configService.get('S3_BUCKET_NAME'),
-        Key: name,
-      });
+      await this.checkImageBelongsToOwner(name, ownerId);
+
+      return this.imagesService.getImageUrl(name);
     } catch (e) {
+      this.logger.error('Failed to retrieve image: ' + e.message);
+
       throw new InternalServerErrorException(
-        'Failed to create a GET command: ' + e.message,
+        'Failed to retrieve image: ' + e.message,
       );
     }
-
-    let url: string;
-
-    try {
-      url = await getSignedUrl(this.s3Client, getCommand, { expiresIn: 3600 });
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to get signed URL: ' + e.message,
-      );
-    }
-
-    return {
-      name: name,
-      url,
-    };
   }
 
   async deleteImage(name: string, ownerId: number) {
     await this.checkImageBelongsToOwner(name, ownerId);
 
-    let deleteCommand: DeleteObjectCommand;
-
     try {
-      deleteCommand = new DeleteObjectCommand({
-        Bucket: this.configService.get('S3_BUCKET_NAME'),
-        Key: name,
-      });
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to create a DELETE command: ' + e.message,
-      );
-    }
+      await this.imagesService.deleteImage(name);
 
-    try {
-      await this.s3Client.send(deleteCommand);
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to execute a DELETE command: ' + e.message,
-      );
-    }
+      this.logger.log('Deleted image for post with id from S3: ' + name);
 
-    try {
       await this.prismaService.postImage.delete({
         where: {
           name,
         },
       });
+
+      this.logger.log('Deleted image for post with id: ' + name);
     } catch (e) {
+      this.logger.error('Failed to delete an image: ' + e.message);
+
       throw new InternalServerErrorException(
-        'Failed to delete the image from database: ' + e.message,
+        'Failed to delete an image: ' + e.message,
       );
     }
   }

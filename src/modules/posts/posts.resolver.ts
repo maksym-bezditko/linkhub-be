@@ -1,25 +1,45 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import {
+  Args,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from '@nestjs/graphql';
 import { PostsService } from './posts.service';
-import { CreatePostInput } from '../../graphql/inputs/create-post.input';
-import { UpdatePostInput } from '../../graphql/inputs/update-post.input';
 import { UseGuards } from '@nestjs/common';
 import { AtJwtGuard } from '../auth/guards/jwt-at.guard';
 import { UserIdFromJwt } from 'src/decorators/user-id-from-jwt.decorator';
-import { PostWithImagesAndLikesResponse } from 'src/graphql/responses/post-with-images-and-likes.response';
-import { UnlikePostInput } from 'src/graphql/inputs/unlike-post.input';
-import { LikePostInput } from 'src/graphql/inputs/like-post.input';
-import { CommonResponse } from 'src/graphql/responses/common.response';
-import { DeletePostInput } from 'src/graphql/inputs/delete-post-input';
-import { HashtagsInput } from 'src/graphql/inputs/hashtags.input';
-import { HashtagResponse } from 'src/graphql/responses/hashtag.response';
+import {
+  CreatePostInput,
+  DeletePostInput,
+  UpdatePostInput,
+} from 'src/graphql/inputs';
+import {
+  CommonResponse,
+  HashtagResponse,
+  LikeResponse,
+  PostResponse,
+  UserResponse,
+} from 'src/graphql/responses';
+import { AuthService } from '../auth/auth.service';
+import { HashtagsService } from '../hashtags/hashtags.service';
+import { LikesService } from '../likes/likes.service';
+import { ImagesService } from '../files/images.service';
 
-@Resolver(() => PostWithImagesAndLikesResponse)
+@Resolver(() => PostResponse)
 export class PostsResolver {
-  constructor(private readonly postsService: PostsService) {}
+  constructor(
+    private readonly postsService: PostsService,
+    private readonly authService: AuthService,
+    private readonly hashtagsService: HashtagsService,
+    private readonly likesService: LikesService,
+    private readonly imagesService: ImagesService,
+  ) {}
 
   @UseGuards(AtJwtGuard)
-  @Mutation(() => PostWithImagesAndLikesResponse)
-  createPost(
+  @Mutation(() => PostResponse)
+  async createPost(
     @Args('createPostInput') createPostInput: CreatePostInput,
     @UserIdFromJwt() userId: number,
   ) {
@@ -27,60 +47,70 @@ export class PostsResolver {
   }
 
   @UseGuards(AtJwtGuard)
-  @Query(() => [PostWithImagesAndLikesResponse])
-  getUserPosts(@UserIdFromJwt() userId: number) {
+  @Query(() => [PostResponse])
+  async getMyPosts(@UserIdFromJwt() userId: number) {
     return this.postsService.getUserPosts(userId);
   }
 
   @UseGuards(AtJwtGuard)
-  @Query(() => [PostWithImagesAndLikesResponse])
-  getFriendsPosts(
-    @UserIdFromJwt() userId: number,
-    @Args('hashtagsInput') hashtagsInput: HashtagsInput,
-  ) {
-    return this.postsService.getFriendsPosts(userId, hashtagsInput);
-  }
-
-  @Query(() => [HashtagResponse])
-  getHashtags() {
-    return this.postsService.getHashtags();
+  @Query(() => [PostResponse])
+  async getFollowingsPosts(@UserIdFromJwt() userId: number) {
+    return this.postsService.getFollowingsPosts(userId);
   }
 
   @UseGuards(AtJwtGuard)
-  @Query(() => [PostWithImagesAndLikesResponse])
-  getPostsRecommendations(@UserIdFromJwt() userId: number) {
+  @Query(() => [PostResponse])
+  async getPostsRecommendations(@UserIdFromJwt() userId: number) {
     return this.postsService.getPostsRecommendations(userId);
   }
 
   @UseGuards(AtJwtGuard)
   @Mutation(() => CommonResponse)
-  deletePost(
+  async deletePost(
     @UserIdFromJwt() userId: number,
     @Args('deletePostInput') { postId }: DeletePostInput,
   ) {
     return this.postsService.deletePost(postId, userId);
   }
 
-  @Mutation(() => PostWithImagesAndLikesResponse)
-  updatePost(@Args('updatePostInput') updatePostInput: UpdatePostInput) {
+  @Mutation(() => PostResponse)
+  async updatePost(@Args('updatePostInput') updatePostInput: UpdatePostInput) {
     return this.postsService.updatePost(updatePostInput);
   }
 
-  @UseGuards(AtJwtGuard)
-  @Mutation(() => CommonResponse)
-  likePost(
-    @UserIdFromJwt() userId: number,
-    @Args('likePostInput') likePostInput: LikePostInput,
-  ) {
-    return this.postsService.likePost(likePostInput, userId);
+  @ResolveField('owner', () => UserResponse)
+  async owner(@Parent() post: PostResponse) {
+    const { userId } = post;
+
+    return this.authService.getUserById(userId);
   }
 
-  @UseGuards(AtJwtGuard)
-  @Mutation(() => CommonResponse)
-  unlikePost(
-    @UserIdFromJwt() userId: number,
-    @Args('unlikePostInput') unlikePostInput: UnlikePostInput,
-  ) {
-    return this.postsService.unlikePost(unlikePostInput, userId);
+  @ResolveField('hashtags', () => [HashtagResponse])
+  async hashtags(@Parent() post: PostResponse) {
+    const { id } = post;
+
+    return this.hashtagsService.getPostHashtags(id);
+  }
+
+  @ResolveField('likes', () => [LikeResponse])
+  async likes(@Parent() post: PostResponse) {
+    const { id } = post;
+
+    return this.likesService.getPostLikes(id);
+  }
+
+  @ResolveField('postImage', () => String, { nullable: true })
+  async profileImage(@Parent() post: PostResponse) {
+    const { id } = post;
+
+    const imageName = await this.postsService.getPostImageNameBePostId(id);
+
+    if (!imageName) {
+      return null;
+    }
+
+    const { url } = await this.imagesService.getImageUrl(imageName);
+
+    return url;
   }
 }

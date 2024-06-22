@@ -1,84 +1,47 @@
 import {
-  DeleteObjectCommand,
-  GetObjectCommand,
-  S3Client,
-} from '@aws-sdk/client-s3';
-import {
-  Inject,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import {
-  CUSTOM_PROVIDERS_NAMES,
-  Image,
-  PROFILE_IMAGE_RESIZE_OPTIONS,
-} from 'src/models';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { ConfigService } from '@nestjs/config';
+import { Image, PROFILE_IMAGE_RESIZE_OPTIONS } from 'src/models';
 import { v4 as uuid } from 'uuid';
-import * as sharp from 'sharp';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PrismaService } from '../database/prisma.service';
-import { User } from '@prisma/client';
+import { CommonResponse } from 'src/graphql/responses';
+import { ImagesService } from './images.service';
 
 @Injectable()
 export class ProfileImagesService {
+  private readonly logger = new Logger(ProfileImagesService.name);
+
   constructor(
-    @Inject(CUSTOM_PROVIDERS_NAMES.S3_CLIENT)
-    private readonly s3Client: S3Client,
-    private readonly configService: ConfigService,
     private readonly prismaService: PrismaService,
+    private readonly imagesService: ImagesService,
   ) {}
 
   async uploadImage(file: Express.Multer.File, ownerId: number) {
     try {
       await this.deleteProfileImage(ownerId);
+
+      this.logger.log('Deleted old profile image for user with id: ' + ownerId);
     } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to delete old profile image: ' + e.message,
-      );
-    }
-
-    let formattedImageBuffer: Buffer;
-
-    try {
-      formattedImageBuffer = await sharp(file.buffer)
-        .resize(PROFILE_IMAGE_RESIZE_OPTIONS)
-        .toBuffer();
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to resize image: ' + e.message,
-      );
-    }
-
-    const imageName = uuid();
-
-    let putCommand: PutObjectCommand;
-
-    try {
-      putCommand = new PutObjectCommand({
-        Bucket: this.configService.get('S3_BUCKET_NAME'),
-        Key: imageName,
-        Body: formattedImageBuffer,
-        ContentType: file.mimetype,
-      });
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to create a PUT command: ' + e.message,
-      );
+      this.logger.error('Failed to delete old profile image' + e.message);
     }
 
     try {
-      await this.s3Client.send(putCommand);
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to execute a PUT command: ' + e.message,
-      );
-    }
+      const imageName = uuid();
 
-    try {
+      await this.imagesService.putImage(
+        file,
+        PROFILE_IMAGE_RESIZE_OPTIONS,
+        imageName,
+      );
+
+      this.logger.log(
+        'Uploaded new profile image for user with id: ' + ownerId,
+      );
+
       await this.prismaService.user.update({
         where: {
           id: ownerId,
@@ -87,20 +50,24 @@ export class ProfileImagesService {
           profileImageName: imageName,
         },
       });
+
+      this.logger.log(
+        'Updated profile image name for user with id: ' + ownerId,
+      );
+
+      return this.retrieveImage(ownerId);
     } catch (e) {
+      this.logger.error('Failed to upload image: ' + e.message);
+
       throw new InternalServerErrorException(
-        'Failed to upload image to Prisma: ' + e.message,
+        'Failed to upload image: ' + e.message,
       );
     }
-
-    return this.retrieveImage(ownerId);
   }
 
   async retrieveImage(ownerId: number): Promise<Image> {
-    let user: User;
-
     try {
-      user = await this.prismaService.user.findUnique({
+      const user = await this.prismaService.user.findUnique({
         where: {
           id: ownerId,
         },
@@ -109,84 +76,41 @@ export class ProfileImagesService {
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
+
+      if (!user.profileImageName) {
+        throw new NotFoundException();
+      }
+
+      return this.imagesService.getImageUrl(user.profileImageName);
     } catch (e) {
+      this.logger.error('Failed to retrieve image: ' + e.message);
+
       throw new InternalServerErrorException(
-        'Failed to get the image from the DB: ' + e.message,
+        'Failed to retrieve image: ' + e.message,
       );
     }
-
-    if (!user.profileImageName) {
-      throw new NotFoundException();
-    }
-
-    let getCommand: GetObjectCommand;
-
-    try {
-      getCommand = new GetObjectCommand({
-        Bucket: this.configService.get('S3_BUCKET_NAME'),
-        Key: user.profileImageName,
-      });
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to create a GET command: ' + e.message,
-      );
-    }
-
-    let url: string;
-
-    try {
-      url = await getSignedUrl(this.s3Client, getCommand, { expiresIn: 3600 });
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to get signed URL: ' + e.message,
-      );
-    }
-
-    return {
-      name: user.profileImageName,
-      url,
-    };
   }
 
-  async deleteProfileImage(ownerId: number) {
-    let user: User | null;
-
+  async deleteProfileImage(ownerId: number): Promise<CommonResponse> {
     try {
-      user = await this.prismaService.user.findUnique({
+      const user = await this.prismaService.user.findUnique({
         where: { id: ownerId },
       });
-    } catch (e) {
-      throw new UnauthorizedException('Failed to find the user: ' + e.message);
-    }
 
-    const imageName = user.profileImageName;
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
 
-    if (!imageName) {
-      return;
-    }
+      const imageName = user.profileImageName;
 
-    let deleteCommand: DeleteObjectCommand;
+      if (!imageName) {
+        throw new NotFoundException('Image not found');
+      }
 
-    try {
-      deleteCommand = new DeleteObjectCommand({
-        Bucket: this.configService.get('S3_BUCKET_NAME'),
-        Key: imageName,
-      });
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to create a DELETE command: ' + e.message,
-      );
-    }
+      await this.imagesService.deleteImage(imageName);
 
-    try {
-      await this.s3Client.send(deleteCommand);
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to execute a DELETE command: ' + e.message,
-      );
-    }
+      this.logger.log('Deleted image for user with id: ' + ownerId);
 
-    try {
       await this.prismaService.user.update({
         where: {
           id: ownerId,
@@ -195,10 +119,16 @@ export class ProfileImagesService {
           profileImageName: null,
         },
       });
-    } catch (e) {
-      throw new InternalServerErrorException(
-        'Failed to delete the image from database: ' + e.message,
+
+      this.logger.log(
+        'Updated profile image name for user with id: ' + ownerId,
       );
+
+      return { succeeded: true };
+    } catch (e) {
+      this.logger.error('Failed to delete image: ' + e.message);
+
+      throw new UnauthorizedException('Failed to delete image: ' + e.message);
     }
   }
 }

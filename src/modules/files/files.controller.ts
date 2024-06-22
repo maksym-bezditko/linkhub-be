@@ -28,7 +28,7 @@ export class FilesController {
   @Post('upload-profile-image')
   @UseGuards(AtJwtGuard)
   @UseInterceptors(FileInterceptor('file'))
-  uploadProfileImage(
+  async uploadProfileImage(
     @UploadedFile() file: Express.Multer.File,
     @UserIdFromJwt() userId: number,
   ) {
@@ -38,28 +38,28 @@ export class FilesController {
   @Post('upload-post-image')
   @UseGuards(AtJwtGuard)
   @UseInterceptors(FilesInterceptor('files'))
-  uploadPostImage(
+  async uploadPostImage(
     @UploadedFiles() files: Express.Multer.File[],
     @Req() { body: { postId } }: Request,
     @UserIdFromJwt() userId: number,
   ) {
-    return this.postImagesService.uploadImages(files, userId, postId);
+    return this.postImagesService.uploadImages(files, userId, +postId);
   }
 
   @Post('retrieve-profile-image')
-  retrieveProfileImage(@Body() { userId }: { userId: number }) {
+  async retrieveProfileImage(@Body() { userId }: { userId: number }) {
     return this.profileImagesService.retrieveImage(userId);
   }
 
   @UseGuards(AtJwtGuard)
   @Get('retrieve-post-image/:name')
-  retrieve(@Param('name') name: string, @UserIdFromJwt() userId: number) {
+  async retrieve(@Param('name') name: string, @UserIdFromJwt() userId: number) {
     return this.postImagesService.retrieveImage(name, userId);
   }
 
   @UseGuards(AtJwtGuard)
   @Delete('post-image/:name')
-  deletePostImage(
+  async deletePostImage(
     @Param('name') name: string,
     @UserIdFromJwt() userId: number,
   ) {
@@ -68,7 +68,7 @@ export class FilesController {
 
   @UseGuards(AtJwtGuard)
   @Delete('profile-image')
-  deleteProfileImage(@UserIdFromJwt() userId: number) {
+  async deleteProfileImage(@UserIdFromJwt() userId: number) {
     return this.profileImagesService.deleteProfileImage(userId);
   }
 }

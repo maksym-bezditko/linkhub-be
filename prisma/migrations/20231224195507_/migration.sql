@@ -3,7 +3,7 @@ CREATE TYPE "Sex" AS ENUM ('MALE', 'FEMALE');
 
 -- CreateTable
 CREATE TABLE "users" (
-    "id" UUID NOT NULL,
+    "id" SERIAL NOT NULL,
     "email" VARCHAR(100) NOT NULL,
     "password_hash" VARCHAR(500) NOT NULL,
     "refresh_token_hash" VARCHAR(500),
@@ -22,7 +22,7 @@ CREATE TABLE "users" (
 
 -- CreateTable
 CREATE TABLE "settings" (
-    "id" UUID NOT NULL,
+    "id" SERIAL NOT NULL,
     "dark_theme_enabled" BOOLEAN NOT NULL,
     "message_notifications_enabled" BOOLEAN NOT NULL,
     "friend-request_notifications_enabled" BOOLEAN NOT NULL,
@@ -38,17 +38,17 @@ CREATE TABLE "settings" (
     "spam_block_enabled" BOOLEAN NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    "user_id" UUID NOT NULL,
+    "user_id" INTEGER NOT NULL,
 
     CONSTRAINT "settings_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "posts" (
-    "id" UUID NOT NULL,
+    "id" SERIAL NOT NULL,
     "caption" TEXT,
     "location" VARCHAR(50),
-    "user_id" UUID NOT NULL,
+    "user_id" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -57,7 +57,7 @@ CREATE TABLE "posts" (
 
 -- CreateTable
 CREATE TABLE "hashtags" (
-    "id" UUID NOT NULL,
+    "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
 
     CONSTRAINT "hashtags_pkey" PRIMARY KEY ("id")
@@ -65,8 +65,8 @@ CREATE TABLE "hashtags" (
 
 -- CreateTable
 CREATE TABLE "posts_hashtags" (
-    "postId" UUID NOT NULL,
-    "hashtagId" UUID NOT NULL,
+    "postId" INTEGER NOT NULL,
+    "hashtagId" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -75,20 +75,20 @@ CREATE TABLE "posts_hashtags" (
 
 -- CreateTable
 CREATE TABLE "post_images" (
-    "id" UUID NOT NULL,
+    "id" SERIAL NOT NULL,
     "name" UUID NOT NULL,
-    "ownerId" UUID NOT NULL,
+    "ownerId" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
-    "post_id" UUID NOT NULL,
+    "post_id" INTEGER NOT NULL,
 
     CONSTRAINT "post_images_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "likes" (
-    "post_id" UUID NOT NULL,
-    "user_id" UUID NOT NULL,
+    "post_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -97,58 +97,29 @@ CREATE TABLE "likes" (
 
 -- CreateTable
 CREATE TABLE "follows" (
-    "followingUserId" UUID NOT NULL,
-    "followedUserId" UUID NOT NULL,
+    "followingUserId" INTEGER NOT NULL,
+    "followedUserId" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "follows_pkey" PRIMARY KEY ("followingUserId","followedUserId")
 );
 
--- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
-
--- CreateIndex
 CREATE UNIQUE INDEX "users_nickname_key" ON "users"("nickname");
-
--- CreateIndex
 CREATE UNIQUE INDEX "users_profile_image_name_key" ON "users"("profile_image_name");
-
--- CreateIndex
 CREATE UNIQUE INDEX "settings_user_id_key" ON "settings"("user_id");
-
--- CreateIndex
 CREATE UNIQUE INDEX "hashtags_name_key" ON "hashtags"("name");
-
--- CreateIndex
 CREATE UNIQUE INDEX "post_images_name_key" ON "post_images"("name");
 
--- AddForeignKey
+
 ALTER TABLE "settings" ADD CONSTRAINT "settings_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "posts" ADD CONSTRAINT "posts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "posts_hashtags" ADD CONSTRAINT "posts_hashtags_postId_fkey" FOREIGN KEY ("postId") REFERENCES "posts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "posts_hashtags" ADD CONSTRAINT "posts_hashtags_hashtagId_fkey" FOREIGN KEY ("hashtagId") REFERENCES "hashtags"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "post_images" ADD CONSTRAINT "post_images_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "post_images" ADD CONSTRAINT "post_images_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "posts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "likes" ADD CONSTRAINT "likes_post_id_fkey" FOREIGN KEY ("post_id") REFERENCES "posts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "likes" ADD CONSTRAINT "likes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "follows" ADD CONSTRAINT "follows_followingUserId_fkey" FOREIGN KEY ("followingUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "follows" ADD CONSTRAINT "follows_followedUserId_fkey" FOREIGN KEY ("followedUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

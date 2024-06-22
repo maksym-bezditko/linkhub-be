@@ -3,16 +3,22 @@ import { AuthModule } from './auth/auth.module';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
-import { PostsModule } from './posts/posts.module';
 import { GraphQLFormattedError } from 'graphql';
+import { ConfigModule } from '@nestjs/config';
+import { FollowsModule } from './follows/follows.module';
 import { FilesModule } from './files/files.module';
-import { FriendsModule } from './friends/friends.module';
-import { StatsModule } from './stats/stats.module';
-import { Lab2Module } from './lab2/lab2.module';
+import { PostsModule } from './posts/posts.module';
+import { HashtagsModule } from './hashtags/hashtags.module';
+import { LikesModule } from './likes/likes.module';
 
 @Module({
   imports: [
     AuthModule,
+
+    ConfigModule.forRoot({
+      envFilePath: '.env',
+      isGlobal: true,
+    }),
 
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
@@ -27,17 +33,16 @@ import { Lab2Module } from './lab2/lab2.module';
       },
     }),
 
-    PostsModule,
+    FollowsModule,
 
-    AuthModule,
+    PostsModule,
 
     FilesModule,
 
-    FriendsModule,
+    HashtagsModule,
 
-    StatsModule,
-
-    Lab2Module,
+    LikesModule,
   ],
+  providers: [],
 })
 export class AppModule {}
